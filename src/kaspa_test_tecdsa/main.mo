@@ -41,6 +41,33 @@ persistent actor {
         }
     };
 
+    // Parse derivation path (e.g., "44'/111111'/0'/0/0") to [Blob]
+    private func parseDerivationPath(path: Text) : ?[Blob] {
+        if (path == "") {
+            return ?[];
+        };
+        let parts = Text.split(path, #char '/');
+        let result = Buffer.Buffer<Blob>(0);
+        for (part in parts) {
+            // Remove trailing ' for hardened keys
+            let cleaned = if (Text.endsWith(part, #char '\'')) {
+                Text.trimEnd(part, #char '\'')
+            } else {
+                part
+            };
+            switch (textToNat32(cleaned)) {
+                case (null) {
+                    Debug.print("🚨 Invalid derivation path component: " # part);
+                    return null;
+                };
+                case (?n) {
+                    result.add(nat32ToBlob(n));
+                };
+            };
+        };
+        ?Buffer.toArray(result)
+    };
+
     // Helper function to convert Text to Nat64
     private func textToNat64(text: Text) : ?Nat64 {
         let chars = Text.toIter(text);
@@ -55,6 +82,32 @@ persistent actor {
             return null;
         };
         ?Nat64.fromNat(num)
+    };
+
+    // Helper function to convert Text number to Nat32
+    private func textToNat32(text: Text) : ?Nat32 {
+        let chars = Text.toIter(text);
+        var num: Nat = 0;
+        for (c in chars) {
+            if (c < '0' or c > '9') {
+                return null;
+            };
+            num := num * 10 + Nat32.toNat(Char.toNat32(c) - Char.toNat32('0'));
+        };
+        if (num > Nat32.toNat(Nat32.maximumValue)) {
+            return null;
+        };
+        ?Nat32.fromNat(num)
+    };
+
+    // Convert Nat32 to 4-byte Blob (little-endian)
+    private func nat32ToBlob(n: Nat32) : Blob {
+        let bytes = Buffer.Buffer<Nat8>(4);
+        bytes.add(Nat8.fromNat(Nat32.toNat(n & 0xFF)));
+        bytes.add(Nat8.fromNat(Nat32.toNat((n >> 8) & 0xFF)));
+        bytes.add(Nat8.fromNat(Nat32.toNat((n >> 16) & 0xFF)));
+        bytes.add(Nat8.fromNat(Nat32.toNat((n >> 24) & 0xFF)));
+        Blob.fromArray(Buffer.toArray(bytes))
     };
 
     // Fetch UTXOs for an address from Kaspa mainnet
@@ -202,12 +255,27 @@ persistent actor {
         }
     };
 
-    private func get_ecdsa_pubkey() : async ?Blob {
+    private func get_ecdsa_pubkey(derivation_path: ?Text) : async ?Blob {
         try {
+
+            let path = switch (derivation_path) {
+                case (null) { [] };
+                case (?text) {
+                    switch (parseDerivationPath(text)) {
+                        case (null) {
+                            Debug.print("🚨 Failed to parse derivation path: " # text);
+                            return null;
+                        };
+                        case (?p) { p };
+                    };
+                };
+            };
+            Debug.print("Using derivation path: " # debug_show(path));
+
             Cycles.add<system>(30_000_000_000);
             let pk = await IC.ecdsa_public_key({
                 canister_id = null;
-                derivation_path = [];
+                derivation_path = path;
                 key_id = { curve = #secp256k1; name = key_id };
             });
             ?pk.public_key
@@ -217,8 +285,8 @@ persistent actor {
         }
     };
 
-    public func get_kaspa_address() : async Text {
-        let maybe_pk = await get_ecdsa_pubkey();
+    public func get_kaspa_address(derivation_path: ?Text) : async Text {
+        let maybe_pk = await get_ecdsa_pubkey(derivation_path);
         switch (maybe_pk) {
             case (null) {
                 Debug.print("🚨 Failed to fetch ECDSA public key");
@@ -267,7 +335,7 @@ persistent actor {
                 Debug.print("Recipient scriptPublicKey: " # recipient_script);
 
                 // --- Get sender's scriptPublicKey for change output ---
-                let maybe_pk = await get_ecdsa_pubkey();
+                let maybe_pk = await get_ecdsa_pubkey(null);
                 let change_script = switch (maybe_pk) {
                     case (null) {
                         Debug.print("🚨 Failed to fetch ECDSA public key for change address");
@@ -299,7 +367,7 @@ persistent actor {
 
 
                 // --- Fetch UTXO dynamically ---
-                let sender_address = await get_kaspa_address();
+                let sender_address = await get_kaspa_address(null);
                 let utxos = await fetch_utxos(sender_address);
                 let utxo = switch (utxos) {
                     case (null) {
