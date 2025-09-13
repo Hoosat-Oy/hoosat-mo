@@ -13,7 +13,6 @@ import Blob "mo:base/Blob";
 import Cycles "mo:base/ExperimentalCycles";
 import Error "mo:base/Error";
 import Iter "mo:base/Iter";
-import IC "ic:aaaaa-aa";
 
 import Address "address";
 import Sighash "sighash";
