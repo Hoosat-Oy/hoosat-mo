@@ -7,20 +7,13 @@ import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
-import Option "mo:base/Option";
 import Text "mo:base/Text";
-import Blob "mo:base/Blob";
-import Cycles "mo:base/ExperimentalCycles";
-import Error "mo:base/Error";
 import Iter "mo:base/Iter";
 
 import Address "address";
-import Sighash "sighash";
 import Types "types";
 
 module {
-    // Key ID for threshold ECDSA (configure as needed)
-    private let key_id = "dfx_test_key";
 
     // secp256k1 curve order / 2 for low-S normalization
     private let curve_n_half : [Nat8] = [
@@ -30,59 +23,6 @@ module {
         0xDF, 0xE9, 0x2F, 0x46, 0x68, 0x1B, 0x20, 0xA0
     ];
 
-    // Fetch ECDSA public key from IC
-    // public func get_ecdsa_pubkey(derivation_path : [Blob]) : async ?[Nat8] {
-    //     try {
-    //         let pubkey = await IC.ecdsa_public_key({
-    //             canister_id = null;
-    //             derivation_path = derivation_path;
-    //             key_id = { curve = #secp256k1; name = key_id };
-    //         });
-    //         let pubkey_bytes = Blob.toArray(pubkey.public_key);
-    //         if (pubkey_bytes.size() != 33) {
-    //             Debug.print("Invalid pubkey length: " # Nat.toText(pubkey_bytes.size()) # ", expected 33 bytes");
-    //             return null;
-    //         };
-    //         ?pubkey_bytes
-    //     } catch (e) {
-    //         Debug.print("Error fetching ECDSA public key: " # Error.message(e));
-    //         return null;
-    //     }
-    // };
-
-    // Sign a transaction hash with ECDSA
-    /*
-    public func sign_ecdsa(tx_hash : [Nat8], derivation_path : [Blob]) : async ?[Nat8] {
-        if (tx_hash.size() != 32) {
-            Debug.print("Invalid transaction hash length: " # Nat.toText(tx_hash.size()) # ", expected 32 bytes");
-            return null;
-        };
-        try {
-            let signature = await IC.sign_with_ecdsa({
-                message_hash = Blob.fromArray(tx_hash);
-                derivation_path = derivation_path;
-                key_id = { curve = #secp256k1; name = key_id };
-            });
-            let signature_bytes = Blob.toArray(signature.signature);
-            if (signature_bytes.size() != 64) {
-                Debug.print("Invalid signature length: " # Nat.toText(signature_bytes.size()) # ", expected 64 bytes");
-                return null;
-            };
-
-            // Convert to DER format with low-S normalization
-            // let der = encode_der_signature(signature_bytes);
-            // if (der.size() == 0) {
-            //     Debug.print("Failed to encode DER signature");
-            //     return null;
-            // };
-            // ?der
-            ?signature_bytes
-        } catch (e) {
-            Debug.print("Error signing with ECDSA: " # Error.message(e));
-            return null;
-        }
-    };
-    */
 
     // Helper to encode (r,s) signature to DER format for Kaspa with low-S normalization
     private func encode_der_signature(sig : [Nat8]) : [Nat8] {
@@ -235,83 +175,6 @@ module {
         }
     };
 
-    // Sign a transaction input (supports both Schnorr and ECDSA)
-    /*
-    public func sign_transaction(
-        tx: Types.KaspaTransaction,
-        input_index: Nat,
-        utxo: Types.UTXO,
-        derivation_path: [Blob], // Used for ECDSA
-        private_key: ?[Nat8],   // Used for Schnorr, null for ECDSA
-        hashType: Sighash.SigHashType,
-        addr_type: Nat          // Address.SCHNORR or Address.ECDSA
-    ) : async ?Types.KaspaTransaction {
-        let reusedValues: Sighash.SighashReusedValues = {
-            var previousOutputsHash = null;
-            var sequencesHash = null;
-            var sigOpCountsHash = null;
-            var outputsHash = null;
-            var payloadHash = null;
-        };
-
-        switch (Sighash.calculate_sighash_schnorr(tx, input_index, utxo, hashType, reusedValues)) {
-            case (null) {
-                Debug.print("🚨 Failed to compute sighash for input " # Nat.toText(input_index));
-                return null;
-            };
-            case (?sighash) {
-                Debug.print("Sighash: " # Sighash.hex_from_array(sighash));
-
-                // Generate signature based on address type
-                let signature_script = Buffer.Buffer<Nat8>(0);
-                if (addr_type == Address.SCHNORR) {
-                    switch (private_key) {
-                        case (null) {
-                            Debug.print("🚨 Schnorr signing requires private key");
-                            return null;
-                        };
-                        case (?priv_key) {
-                            let signature = sign_schnorr(sighash, priv_key);
-                            signature_script.add(65); // OP_DATA_65
-                            signature_script.append(Buffer.fromArray(signature));
-                            signature_script.add(hashType);
-                        };
-                    };
-                } else if (addr_type == Address.ECDSA) {
-                    switch (await sign_ecdsa(sighash, derivation_path)) {
-                        case (null) {
-                            Debug.print("🚨 ECDSA signing failed");
-                            return null;
-                        };
-                        case (?der_sig) {
-                            signature_script.add(Nat8.fromNat(der_sig.size() + 1)); // OP_DATA_<len>
-                            signature_script.append(Buffer.fromArray(der_sig));
-                            signature_script.add(hashType);
-                        };
-                    };
-                } else {
-                    Debug.print("🚨 Unsupported address type: " # Nat.toText(addr_type));
-                    return null;
-                };
-
-                // Update transaction input
-                let updated_inputs = Array.mapEntries(tx.inputs, func (input: Types.TransactionInput, i: Nat) : Types.TransactionInput {
-                    if (i == input_index) {
-                        { input with signatureScript = Address.hex_from_array(Buffer.toArray(signature_script)) }
-                    } else {
-                        input
-                    }
-                });
-
-                let signed_tx: Types.KaspaTransaction = {
-                    tx with inputs = updated_inputs
-                };
-                ?signed_tx
-            };
-        };
-    };
-    */
-
     // Serialize transaction to JSON for Kaspa REST API
     public func serialize_transaction(tx: Types.KaspaTransaction) : Text {
         let inputs_json = Array.foldLeft<Types.TransactionInput, Text>(
@@ -333,7 +196,8 @@ module {
             func (acc: Text, output: Types.TransactionOutput) : Text {
                 acc # (if (acc != "[") { "," } else { "" }) #
                 "{\"amount\":" # Nat64.toText(output.amount) #
-                ",\"scriptPublicKey\":\"" # output.scriptPublicKey.scriptPublicKey # "\"}"
+                ",\"scriptPublicKey\":{\"version\":" # Nat.toText(Nat16.toNat(output.scriptPublicKey.version)) #
+                ",\"scriptPublicKey\":\"" # output.scriptPublicKey.scriptPublicKey # "\"}}"
             }
         ) # "]";
 
@@ -347,130 +211,4 @@ module {
         "\"payload\":\"" # tx.payload # "\"" #
         "}}"
     };
-
-    // Transform function to strip headers for consensus
-    /*
-    public query func transform({ context : Blob; response : IC.http_request_result }) : async IC.http_request_result {
-        {
-            response with headers = []; // Remove headers for consensus
-        }
-    };
-    */
-
-    // Submit transaction to Kaspa testnet
-    /*
-    public func submit_transaction(serialized_tx: Text) : async ?Text {
-        let host = "api.testnet.kaspa.org";
-        let url = "https://" # host # "/transactions/submit";
-        let request_headers = [
-            { name = "Content-Type"; value = "application/json" },
-            { name = "User-Agent"; value = "kaspa-transaction-canister" }
-        ];
-
-        let http_request : IC.http_request_args = {
-            url = url;
-            max_response_bytes = ?2048;
-            headers = request_headers;
-            body = ?Text.encodeUtf8(serialized_tx);
-            method = #post;
-            transform = ?{
-                function = transform;
-                context = Blob.fromArray([]);
-            };
-        };
-
-        Cycles.add<system>(230_949_972_000);
-
-        let response = await IC.http_request(http_request);
-
-        switch (response.status) {
-            case (200) {
-                let decoded_text = switch (Text.decodeUtf8(response.body)) {
-                    case (null) { "No value returned" };
-                    case (?text) { text };
-                };
-                Debug.print("✅ Transaction submitted: " # decoded_text);
-                ?decoded_text
-            };
-            case (_) {
-                let decoded_text = switch (Text.decodeUtf8(response.body)) {
-                    case (null) { "No value returned" };
-                    case (?text) { text };
-                };
-                Debug.print("🚨 Submission failed: Status " # Nat.toText(response.status) # ", Body: " # decoded_text);
-                null
-            };
-        };
-    };
-    */
-
-    // Build and sign a transaction, return JSON for manual submission
-    /*
-    public func build_sign_transaction(
-        utxo: Types.UTXO,
-        recipient_script: Text,
-        output_amount: Nat64,
-        fee: Nat64,
-        derivation_path: [Blob], // Used for ECDSA
-        private_key: ?[Nat8],   // Used for Schnorr, null for ECDSA
-        addr_type: Nat          // Address.SCHNORR or Address.ECDSA
-    ) : async ?Text {
-        // Build transaction
-        let tx = build_transaction(utxo, recipient_script, output_amount, fee);
-        if (tx.inputs.size() == 0) {
-            Debug.print("🚨 Transaction build failed");
-            return null;
-        };
-
-        // Sign transaction
-        switch (await sign_transaction(tx, 0, utxo, derivation_path, private_key, Sighash.SigHashAll, addr_type)) {
-            case (null) {
-                Debug.print("🚨 Transaction signing failed");
-                return null;
-            };
-            case (?signed_tx) {
-                // Serialize transaction to JSON
-                let serialized_tx = serialize_transaction(signed_tx);
-                Debug.print("Serialized transaction: " # serialized_tx);
-                ?serialized_tx
-            };
-        };
-    };
-    */
-
-    // Main function to build, sign, and submit a transaction
-    /*
-    public func build_sign_submit_transaction(
-        utxo: Types.UTXO,
-        recipient_script: Text,
-        output_amount: Nat64,
-        fee: Nat64,
-        derivation_path: [Blob],
-        private_key: ?[Nat8],
-        addr_type: Nat
-    ) : async ?Text {
-        // Build transaction
-        let tx = build_transaction(utxo, recipient_script, output_amount, fee);
-        if (tx.inputs.size() == 0) {
-            Debug.print("🚨 Transaction build failed");
-            return null;
-        };
-
-        // Sign transaction
-        switch (await sign_transaction(tx, 0, utxo, derivation_path, private_key, Sighash.SigHashAll, addr_type)) {
-            case (null) {
-                Debug.print("🚨 Transaction signing failed");
-                return null;
-            };
-            case (?signed_tx) {
-                // Serialize transaction
-                let serialized_tx = serialize_transaction(signed_tx);
-                Debug.print("Serialized transaction: " # serialized_tx);
-
-                // Submit transaction
-                return await submit_transaction(serialized_tx);
-            };
-        };
-    };
-    */
 };

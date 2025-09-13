@@ -56,7 +56,7 @@ persistent actor {
       assert(tx.payload == "");
 
       // Serialize and check against expected JSON (no signature, single output)
-      let expected_json = "{\"transaction\":{\"version\":0,\"inputs\":[{\"previousOutpoint\":{\"transactionId\":\"abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234\",\"index\":0},\"signatureScript\":\"\",\"sequence\":0,\"sigOpCount\":1}],\"outputs\":[{\"amount\":500000,\"scriptPublicKey\":\"76a9140123456789abcdef0123456789abcdef88ac\"}],\"lockTime\":0,\"subnetworkId\":\"0000000000000000000000000000000000000000\",\"gas\":0,\"payload\":\"\"}}";
+      let expected_json = "{\"transaction\":{\"version\":0,\"inputs\":[{\"previousOutpoint\":{\"transactionId\":\"abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234\",\"index\":0},\"signatureScript\":\"\",\"sequence\":0,\"sigOpCount\":1}],\"outputs\":[{\"amount\":500000,\"scriptPublicKey\":{\"version\":0,\"scriptPublicKey\":\"76a9140123456789abcdef0123456789abcdef88ac\"}}],\"lockTime\":0,\"subnetworkId\":\"0000000000000000000000000000000000000000\",\"gas\":0,\"payload\":\"\"}}";
       let serialized = Transaction.serialize_transaction(tx);
       assert(serialized == expected_json);
 
@@ -100,7 +100,7 @@ persistent actor {
       assert(tx.payload == "");
 
       // Serialize and check against expected JSON
-      let expected_json = "{\"transaction\":{\"version\":0,\"inputs\":[{\"previousOutpoint\":{\"transactionId\":\"efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678\",\"index\":1},\"signatureScript\":\"\",\"sequence\":0,\"sigOpCount\":1}],\"outputs\":[{\"amount\":500000,\"scriptPublicKey\":\"76a9149876543210fedcba9876543210fedcba88ac\"}],\"lockTime\":0,\"subnetworkId\":\"0000000000000000000000000000000000000000\",\"gas\":0,\"payload\":\"\"}}";
+      let expected_json = "{\"transaction\":{\"version\":0,\"inputs\":[{\"previousOutpoint\":{\"transactionId\":\"efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678\",\"index\":1},\"signatureScript\":\"\",\"sequence\":0,\"sigOpCount\":1}],\"outputs\":[{\"amount\":500000,\"scriptPublicKey\":{\"version\":0,\"scriptPublicKey\":\"76a9149876543210fedcba9876543210fedcba88ac\"}}],\"lockTime\":0,\"subnetworkId\":\"0000000000000000000000000000000000000000\",\"gas\":0,\"payload\":\"\"}}";
       let serialized = Transaction.serialize_transaction(tx);
       assert(serialized == expected_json);
 
@@ -195,12 +195,129 @@ persistent actor {
       Debug.print("   ✅ Passed test_build_transaction_edge_zero_output!");
     };
 
+    // Test 6: Serialize transaction with various configurations
+    func test_serialize_transaction() {
+      Debug.print("🧪 test_serialize_transaction...");
+
+      // Subtest 1: Single input, single output with signature script
+      do {
+        Debug.print("   Subtest 1: Single input, single output with signature script...");
+        let tx: Types.KaspaTransaction = {
+          version = 0;
+          inputs = [
+            {
+              previousOutpoint = {
+                transactionId = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+                index = 0;
+              };
+              signatureScript = "41107429d672671b737dbfcff40794c88223c992e4f3f8428a2c71c1b53d51d1981ae7a739ac3f58e084e7a31f106dc1b028b7fa57fe71040d6d7071fcef00481101"; // 64-byte ECDSA signature + hashType
+              sequence = 0;
+              sigOpCount = 1;
+            }
+          ];
+          outputs = [
+            {
+              amount = 500_000;
+              scriptPublicKey = {
+                version = 0;
+                scriptPublicKey = "76a9140123456789abcdef0123456789abcdef88ac";
+              };
+            }
+          ];
+          lockTime = 0;
+          subnetworkId = "0000000000000000000000000000000000000000";
+          gas = 0;
+          payload = "";
+        };
+
+        let expected_json = "{\"transaction\":{\"version\":0,\"inputs\":[{\"previousOutpoint\":{\"transactionId\":\"abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234\",\"index\":0},\"signatureScript\":\"41107429d672671b737dbfcff40794c88223c992e4f3f8428a2c71c1b53d51d1981ae7a739ac3f58e084e7a31f106dc1b028b7fa57fe71040d6d7071fcef00481101\",\"sequence\":0,\"sigOpCount\":1}],\"outputs\":[{\"amount\":500000,\"scriptPublicKey\":{\"version\":0,\"scriptPublicKey\":\"76a9140123456789abcdef0123456789abcdef88ac\"}}],\"lockTime\":0,\"subnetworkId\":\"0000000000000000000000000000000000000000\",\"gas\":0,\"payload\":\"\"}}";
+        let serialized = Transaction.serialize_transaction(tx);
+        assert(serialized == expected_json);
+        Debug.print("   ✅ Passed subtest 1!");
+      };
+
+      // Subtest 2: Multiple inputs and outputs
+      do {
+        Debug.print("   Subtest 2: Multiple inputs and outputs...");
+        let tx: Types.KaspaTransaction = {
+          version = 1;
+          inputs = [
+            {
+              previousOutpoint = {
+                transactionId = "efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678";
+                index = 1;
+              };
+              signatureScript = "41107429d672671b737dbfcff40794c88223c992e4f3f8428a2c71c1b53d51d1981ae7a739ac3f58e084e7a31f106dc1b028b7fa57fe71040d6d7071fcef00481101";
+              sequence = 1;
+              sigOpCount = 2;
+            },
+            {
+              previousOutpoint = {
+                transactionId = "ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012";
+                index = 2;
+              };
+              signatureScript = "";
+              sequence = 0;
+              sigOpCount = 1;
+            }
+          ];
+          outputs = [
+            {
+              amount = 300_000;
+              scriptPublicKey = {
+                version = 0;
+                scriptPublicKey = "76a9149876543210fedcba9876543210fedcba88ac";
+              };
+            },
+            {
+              amount = 200_000;
+              scriptPublicKey = {
+                version = 0;
+                scriptPublicKey = "76a914fedcbafedcbafedcbafedcbafedcbafedcba88ac";
+              };
+            }
+          ];
+          lockTime = 1000;
+          subnetworkId = "1111111111111111111111111111111111111111";
+          gas = 500;
+          payload = "48656c6c6f"; // "Hello" in hex
+        };
+
+        let expected_json = "{\"transaction\":{\"version\":1,\"inputs\":[{\"previousOutpoint\":{\"transactionId\":\"efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678efgh5678\",\"index\":1},\"signatureScript\":\"41107429d672671b737dbfcff40794c88223c992e4f3f8428a2c71c1b53d51d1981ae7a739ac3f58e084e7a31f106dc1b028b7fa57fe71040d6d7071fcef00481101\",\"sequence\":1,\"sigOpCount\":2},{\"previousOutpoint\":{\"transactionId\":\"ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012ijkl9012\",\"index\":2},\"signatureScript\":\"\",\"sequence\":0,\"sigOpCount\":1}],\"outputs\":[{\"amount\":300000,\"scriptPublicKey\":{\"version\":0,\"scriptPublicKey\":\"76a9149876543210fedcba9876543210fedcba88ac\"}},{\"amount\":200000,\"scriptPublicKey\":{\"version\":0,\"scriptPublicKey\":\"76a914fedcbafedcbafedcbafedcbafedcbafedcba88ac\"}}],\"lockTime\":1000,\"subnetworkId\":\"1111111111111111111111111111111111111111\",\"gas\":500,\"payload\":\"48656c6c6f\"}}";
+        let serialized = Transaction.serialize_transaction(tx);
+        assert(serialized == expected_json);
+        Debug.print("   ✅ Passed subtest 2!");
+      };
+
+      // Subtest 3: Empty transaction
+      do {
+        Debug.print("   Subtest 3: Empty transaction...");
+        let tx: Types.KaspaTransaction = {
+          version = 0;
+          inputs = [];
+          outputs = [];
+          lockTime = 0;
+          subnetworkId = "0000000000000000000000000000000000000000";
+          gas = 0;
+          payload = "";
+        };
+
+        let expected_json = "{\"transaction\":{\"version\":0,\"inputs\":[],\"outputs\":[],\"lockTime\":0,\"subnetworkId\":\"0000000000000000000000000000000000000000\",\"gas\":0,\"payload\":\"\"}}";
+        let serialized = Transaction.serialize_transaction(tx);
+        assert(serialized == expected_json);
+        Debug.print("   ✅ Passed subtest 3!");
+      };
+
+      Debug.print("   ✅ Passed test_serialize_transaction!");
+    };
+
     // Run all tests
     test_build_transaction_success_exact();
     test_build_transaction_success_larger_fee();
     test_build_transaction_insufficient();
     test_build_transaction_edge_min_exact();
     test_build_transaction_edge_zero_output();
+    test_serialize_transaction();
 
     Debug.print("\n--- All Transaction.build_transaction tests completed! ---\n");
   };
