@@ -1,13 +1,11 @@
 import Array "mo:base/Array";
-import Blob "mo:base/Blob";
-import Text "mo:base/Text";
-import Nat8 "mo:base/Nat8";
-import Debug "mo:base/Debug";
-import Iter "mo:base/Iter";
 import Buffer "mo:base/Buffer";
 import Char "mo:base/Char";
-import Nat32 "mo:base/Nat32";
+import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
+import Nat8 "mo:base/Nat8";
+import Nat32 "mo:base/Nat32";
+import Text "mo:base/Text";
 
 
 import Sighash "../src/kaspa/sighash";
@@ -58,15 +56,6 @@ persistent actor {
     result
   };
 
-  // Helper: Debug byte array
-  func debug_array(arr: [Nat8]): Text {
-    var result = "[";
-    for (i in arr.keys()) {
-      if (i > 0) result := result # ", ";
-      result := result # "0x" # (if (arr[i] < 16) "0" else "") # hex_from_array([arr[i]]);
-    };
-    result # "]"
-  };
 
   public func runTests(): async () {
     Debug.print("\n--- Running Kaspa Sighash Tests ---\n");

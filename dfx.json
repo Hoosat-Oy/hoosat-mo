@@ -1,19 +1,9 @@
 {
   "canisters": {
 
-    "kaspa_test_broadcast": {
-      "type": "motoko",
-      "main": "src/kaspa_test_broadcast/main.mo",
-      "init_cycles": 2000000000000
-    },
     "kaspa_test_tecdsa": {
       "type": "motoko",
       "main": "src/kaspa_test_tecdsa/main.mo",
-      "init_cycles": 2000000000000
-    },
-    "kaspa_transaction_builder": {
-      "type": "motoko",
-      "main": "src/kaspa_transaction_builder/main.mo",
       "init_cycles": 2000000000000
     }
   },
