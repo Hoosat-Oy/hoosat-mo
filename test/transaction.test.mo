@@ -36,7 +36,7 @@ persistent actor {
       let output_amount: Nat64 = 500_000;
       let fee: Nat64 = 100_000;
 
-      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee);
+      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee, recipient_script);
 
       // Assert all transaction fields for correctness
       assert(tx.version == 0);
@@ -80,7 +80,7 @@ persistent actor {
       let output_amount: Nat64 = 500_000;
       let fee: Nat64 = 100_000; // Implicit fee will be 500_000 (> 100_000 min)
 
-      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee);
+      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee, recipient_script);
 
       // Assert key fields
       assert(tx.version == 0);
@@ -124,7 +124,7 @@ persistent actor {
       let output_amount: Nat64 = 500_000;
       let fee: Nat64 = 100_000;
 
-      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee);
+      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee, recipient_script);
 
       // Assert empty transaction fields
       assert(tx.version == 0);
@@ -160,7 +160,7 @@ persistent actor {
       let output_amount: Nat64 = 50_000;
       let fee: Nat64 = 50_000;
 
-      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee);
+      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee, recipient_script);
 
       assert(tx.inputs.size() == 1);
       assert(tx.outputs.size() == 1);
@@ -186,7 +186,7 @@ persistent actor {
       let output_amount: Nat64 = 0;
       let fee: Nat64 = 50_000;
 
-      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee);
+      let tx = Transaction.build_transaction(utxo, recipient_script, output_amount, fee, recipient_script);
 
       assert(tx.inputs.size() == 1);
       assert(tx.outputs.size() == 1);
