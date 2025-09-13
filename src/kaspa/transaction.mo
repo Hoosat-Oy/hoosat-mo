@@ -32,26 +32,27 @@ module {
     ];
 
     // Fetch ECDSA public key from IC
-    public func get_ecdsa_pubkey(derivation_path : [Blob]) : async ?[Nat8] {
-        try {
-            let pubkey = await IC.ecdsa_public_key({
-                canister_id = null;
-                derivation_path = derivation_path;
-                key_id = { curve = #secp256k1; name = key_id };
-            });
-            let pubkey_bytes = Blob.toArray(pubkey.public_key);
-            if (pubkey_bytes.size() != 33) {
-                Debug.print("Invalid pubkey length: " # Nat.toText(pubkey_bytes.size()) # ", expected 33 bytes");
-                return null;
-            };
-            ?pubkey_bytes
-        } catch (e) {
-            Debug.print("Error fetching ECDSA public key: " # Error.message(e));
-            return null;
-        }
-    };
+    // public func get_ecdsa_pubkey(derivation_path : [Blob]) : async ?[Nat8] {
+    //     try {
+    //         let pubkey = await IC.ecdsa_public_key({
+    //             canister_id = null;
+    //             derivation_path = derivation_path;
+    //             key_id = { curve = #secp256k1; name = key_id };
+    //         });
+    //         let pubkey_bytes = Blob.toArray(pubkey.public_key);
+    //         if (pubkey_bytes.size() != 33) {
+    //             Debug.print("Invalid pubkey length: " # Nat.toText(pubkey_bytes.size()) # ", expected 33 bytes");
+    //             return null;
+    //         };
+    //         ?pubkey_bytes
+    //     } catch (e) {
+    //         Debug.print("Error fetching ECDSA public key: " # Error.message(e));
+    //         return null;
+    //     }
+    // };
 
     // Sign a transaction hash with ECDSA
+    /*
     public func sign_ecdsa(tx_hash : [Nat8], derivation_path : [Blob]) : async ?[Nat8] {
         if (tx_hash.size() != 32) {
             Debug.print("Invalid transaction hash length: " # Nat.toText(tx_hash.size()) # ", expected 32 bytes");
@@ -68,18 +69,21 @@ module {
                 Debug.print("Invalid signature length: " # Nat.toText(signature_bytes.size()) # ", expected 64 bytes");
                 return null;
             };
+
             // Convert to DER format with low-S normalization
-            let der = encode_der_signature(signature_bytes);
-            if (der.size() == 0) {
-                Debug.print("Failed to encode DER signature");
-                return null;
-            };
-            ?der
+            // let der = encode_der_signature(signature_bytes);
+            // if (der.size() == 0) {
+            //     Debug.print("Failed to encode DER signature");
+            //     return null;
+            // };
+            // ?der
+            ?signature_bytes
         } catch (e) {
             Debug.print("Error signing with ECDSA: " # Error.message(e));
             return null;
         }
     };
+    */
 
     // Helper to encode (r,s) signature to DER format for Kaspa with low-S normalization
     private func encode_der_signature(sig : [Nat8]) : [Nat8] {
@@ -233,6 +237,7 @@ module {
     };
 
     // Sign a transaction input (supports both Schnorr and ECDSA)
+    /*
     public func sign_transaction(
         tx: Types.KaspaTransaction,
         input_index: Nat,
@@ -306,6 +311,7 @@ module {
             };
         };
     };
+    */
 
     // Serialize transaction to JSON for Kaspa REST API
     public func serialize_transaction(tx: Types.KaspaTransaction) : Text {
@@ -344,13 +350,16 @@ module {
     };
 
     // Transform function to strip headers for consensus
+    /*
     public query func transform({ context : Blob; response : IC.http_request_result }) : async IC.http_request_result {
         {
             response with headers = []; // Remove headers for consensus
         }
     };
+    */
 
     // Submit transaction to Kaspa testnet
+    /*
     public func submit_transaction(serialized_tx: Text) : async ?Text {
         let host = "api.testnet.kaspa.org";
         let url = "https://" # host # "/transactions/submit";
@@ -394,8 +403,10 @@ module {
             };
         };
     };
+    */
 
     // Build and sign a transaction, return JSON for manual submission
+    /*
     public func build_sign_transaction(
         utxo: Types.UTXO,
         recipient_script: Text,
@@ -426,8 +437,10 @@ module {
             };
         };
     };
+    */
 
     // Main function to build, sign, and submit a transaction
+    /*
     public func build_sign_submit_transaction(
         utxo: Types.UTXO,
         recipient_script: Text,
@@ -460,4 +473,5 @@ module {
             };
         };
     };
+    */
 };
