@@ -125,55 +125,6 @@ module {
         dummy_signature
     };
 
-    // Build a transaction with one input and one output
-    // public func build_transaction(
-    //     utxo: Types.UTXO,
-    //     recipient_script: Text, // scriptPublicKey of recipient (hex)
-    //     output_amount: Nat64,  // Amount to send (in sompi)
-    //     fee: Nat64             // Transaction fee (in sompi)
-    // ) : Types.KaspaTransaction {
-    //     let total_input = utxo.amount;
-    //     if (total_input < output_amount + fee) {
-    //         Debug.print("🚨 Insufficient UTXO amount for transaction");
-    //         return {
-    //             version = 0;
-    //             inputs = [];
-    //             outputs = [];
-    //             lockTime = 0;
-    //             subnetworkId = "0000000000000000000000000000000000000000";
-    //             gas = 0;
-    //             payload = "";
-    //         };
-    //     };
-
-    //     {
-    //         version = 0;
-    //         inputs = [
-    //             {
-    //                 previousOutpoint = {
-    //                     transactionId = utxo.transactionId;
-    //                     index = utxo.index;
-    //                 };
-    //                 signatureScript = ""; // To be set after signing
-    //                 sequence = 0;
-    //                 sigOpCount = 1;
-    //             }
-    //         ];
-    //         outputs = [
-    //             {
-    //                 amount = output_amount;
-    //                 scriptPublicKey = {
-    //                     version = 0;
-    //                     scriptPublicKey = recipient_script;
-    //                 };
-    //             }
-    //         ];
-    //         lockTime = 0;
-    //         subnetworkId = "0000000000000000000000000000000000000000";
-    //         gas = 0;
-    //         payload = "";
-    //     }
-    // };
 
     // Build a transaction with one input and one or two outputs (recipient + optional change)
     public func build_transaction(
