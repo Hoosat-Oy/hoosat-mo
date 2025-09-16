@@ -17,10 +17,15 @@ import Json "mo:json";
 
 import IC "ic:aaaaa-aa";
 
-import Address "../kaspa/address";
-import Transaction "../kaspa/transaction";
-import Types "../kaspa/types";
-import Sighash "../kaspa/sighash";
+import Address "../address";
+import Transaction "../transaction";
+import Types "../types";
+import Sighash "../sighash";
+
+// Updated modules with improved error handling
+import Result "mo:base/Result";
+import Errors "../errors";
+import Validation "../validation";
 
 persistent actor {
     private let key_id = "dfx_test_key";
@@ -285,7 +290,7 @@ persistent actor {
         }
     };
 
-    public func get_kaspa_address(derivation_path: ?Text) : async Text {
+    public func get_kaspa_address_legacy(derivation_path: ?Text) : async Text {
         let maybe_pk = await get_ecdsa_pubkey(derivation_path);
         switch (maybe_pk) {
             case (null) {
@@ -299,6 +304,45 @@ persistent actor {
                         "";
                     };
                     case (addr) { addr };
+                }
+            };
+        }
+    };
+
+    // Main address generation using improved modules
+    public func get_kaspa_address(derivation_path: ?Text) : async Text {
+        let maybe_pk = await get_ecdsa_pubkey(derivation_path);
+        switch (maybe_pk) {
+            case (null) {
+                Debug.print("🚨 Failed to fetch ECDSA public key");
+                "";
+            };
+            case (?pk) {
+                switch (Address.generateAddress(pk, 1)) { // 1 = ECDSA, pk is already Blob
+                    case (#err(error)) {
+                        Debug.print("🚨 Failed to generate Kaspa address: " # Errors.errorToText(error));
+                        "";
+                    };
+                    case (#ok(result)) { result.address };
+                }
+            };
+        }
+    };
+
+    // Test validation functionality
+    public func test_validation(address: Text, amount: Nat64) : async Text {
+        switch (Validation.validateAddress(address)) {
+            case (#err(error)) {
+                "Address validation failed: " # Errors.errorToText(error);
+            };
+            case (#ok(_)) {
+                switch (Validation.validateAmount(amount, true)) { // Include dust check
+                    case (#err(error)) {
+                        "Amount validation failed: " # Errors.errorToText(error);
+                    };
+                    case (#ok(_)) {
+                        "✅ Validation passed for address and amount";
+                    };
                 }
             };
         }

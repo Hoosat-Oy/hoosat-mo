@@ -8,8 +8,8 @@ import Nat32 "mo:base/Nat32";
 import Text "mo:base/Text";
 
 
-import Sighash "../src/kaspa/sighash";
-import Types "../src/kaspa/types";
+import Sighash "../src/sighash";
+import Types "../src/types";
 
 persistent actor {
   // Helper: Convert hex character to Nat8

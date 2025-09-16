@@ -3,8 +3,8 @@ import Nat "mo:base/Nat";
 import Nat64 "mo:base/Nat64";
 import Error "mo:base/Error";
 
-import Transaction "../src/kaspa/transaction";
-import Types "../src/kaspa/types";
+import Transaction "../src/transaction";
+import Types "../src/types";
 
 persistent actor {
 

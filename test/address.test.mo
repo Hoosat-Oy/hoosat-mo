@@ -4,7 +4,7 @@ import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
-import Address "../src/kaspa/address";
+import Address "../src/address";
 
 persistent actor {
     // Simple assertion function with custom toText rendering

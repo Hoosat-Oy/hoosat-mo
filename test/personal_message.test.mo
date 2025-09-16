@@ -6,8 +6,8 @@ import Debug "mo:base/Debug";
 
 import { test } "mo:test/async";
 
-import Address "../src/kaspa/address";
-import PersonalMessage "../src/kaspa/personal_message";
+import Address "../src/address";
+import PersonalMessage "../src/personal_message";
 
 persistent actor {
   public func runTests() : async () {

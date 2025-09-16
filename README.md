@@ -1,6 +1,7 @@
 # Kaspa Motoko Package and Canister
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/kaspa)](https://mops.one/kaspa)
 
 Welcome to the `kaspa` project, which provides a Motoko package (`kaspa-mo`) and a canister implementation for interacting with the Kaspa blockchain on the Internet Computer (IC). The `kaspa-mo` package includes modules for generating and decoding Kaspa addresses, calculating signature hashes, building and serializing transactions, and defining common blockchain data structures. The `kaspa_test_tecdsa.mo` canister demonstrates how to use the package to fetch UTXOs, generate addresses, and sign ECDSA-based transactions.
 
@@ -105,23 +106,31 @@ To test the `kaspa` canister locally:
 Import the `kaspa-mo` modules in your Motoko code:
 
 ```motoko
-import Address "mo:codecustard/kaspa/src/address";
-import Sighash "mo:codecustard/kaspa/src/sighash";
-import Transaction "mo:codecustard/kaspa/src/transaction";
-import Types "mo:codecustard/kaspa/src/types";
+import Address "mo:kaspa/address";
+import Wallet "mo:kaspa/wallet";
+import Errors "mo:kaspa/errors";
+import Validation "mo:kaspa/validation";
 ```
 
 ### Example: Generating a Kaspa Address
 Generate a Kaspa address from a public key (Schnorr or ECDSA):
 
 ```motoko
-import Address "mo:codecustard/kaspa/src/address";
+import Address "mo:kaspa/address";
+import Result "mo:base/Result";
 import Blob "mo:base/Blob";
 
 actor {
   public func generateAddress(pubkeyHex : Text, addrType : Nat) : async Text {
-    let pubkey = Address.array_from_hex(pubkeyHex);
-    Address.address_from_pubkey(Blob.fromArray(pubkey), addrType)
+    switch (Address.arrayFromHex(pubkeyHex)) {
+      case (#ok(pubkey)) {
+        switch (Address.generateAddress(Blob.fromArray(pubkey), addrType)) {
+          case (#ok(info)) { info.address };
+          case (#err(_)) { "" };
+        }
+      };
+      case (#err(_)) { "" };
+    }
   };
 };
 ```
