@@ -12,6 +12,9 @@ Welcome to the `kaspa` project, which provides a Motoko package (`kaspa-mo`) and
 - [Dependencies](#dependencies)
 - [Running the Canister Locally](#running-the-canister-locally)
   - [Note on Frontend Environment Variables](#note-on-frontend-environment-variables)
+- [Examples](#examples)
+  - [Internet Identity + Kaspa Wallet](#internet-identity--kaspa-wallet)
+  - [Basic Wallet Broadcasting](#basic-wallet-broadcasting)
 - [Usage](#usage)
   - [Example: Generating a Kaspa Address](#example-generating-a-kaspa-address)
   - [Example: Calculating a Schnorr Sighash](#example-calculating-a-schnorr-sighash)
@@ -100,6 +103,47 @@ To test the `kaspa` canister locally:
    ```bash
    npm run generate
    ```
+
+## Examples
+
+This repository includes several comprehensive examples demonstrating different use cases for the Kaspa Motoko package:
+
+### Internet Identity + Kaspa Wallet
+
+🌟 **Featured Example**: A Kaspa wallet with Internet Identity authentication.
+
+**Location**: [`examples/ii_kaspa_wallet/`](examples/ii_kaspa_wallet/)
+
+**Features**:
+- 🔐 Internet Identity passwordless authentication
+- 🎨 Modern React frontend with shadcn-inspired dark theme
+- 💸 Complete send/receive functionality
+- 🔒 Secure SHA256-based derivation paths
+- 👤 Per-user wallet sessions with timeout management
+- ⚡ Real-time balance checking and transaction status
+
+**Quick Start**:
+```bash
+cd examples/ii_kaspa_wallet
+npm install
+dfx start --background
+dfx deps deploy internet_identity
+dfx deploy
+```
+
+**[📖 Full Documentation](examples/ii_kaspa_wallet/README.md)**
+
+### Basic Wallet Broadcasting
+
+**Location**: [`examples/wallet_broadcast_example.mo`](examples/wallet_broadcast_example.mo)
+
+A simple example demonstrating the core wallet functionality:
+- Address generation
+- Transaction building and signing
+- Broadcasting to Kaspa network
+- Basic error handling
+
+Perfect for understanding the fundamental concepts before building more complex applications.
 
 ## Usage
 
