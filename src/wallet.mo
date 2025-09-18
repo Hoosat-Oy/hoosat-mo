@@ -2,8 +2,6 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Char "mo:base/Char";
-import Cycles "mo:base/ExperimentalCycles";
-import Debug "mo:base/Debug";
 import Error "mo:base/Error";
 import Float "mo:base/Float";
 import Int "mo:base/Int";
@@ -13,7 +11,6 @@ import Nat64 "mo:base/Nat64";
 import Nat32 "mo:base/Nat32";
 import Nat16 "mo:base/Nat16";
 import Text "mo:base/Text";
-import Time "mo:base/Time";
 import Result "mo:base/Result";
 
 import Json "mo:json";
@@ -30,11 +27,6 @@ import Constants "constants";
 module {
 
     public type Result<T> = Result.Result<T, Errors.KaspaError>;
-
-    // Transform function for HTTP outcalls
-    public query func transform(args: {context: Blob; response: IC.http_request_result}) : async IC.http_request_result {
-        { args.response with headers = [] }
-    };
 
     // Wallet configuration
     public type WalletConfig = {
@@ -123,8 +115,7 @@ module {
                     case (#err(error)) { return #err(error) };
                     case (#ok(blobs)) {
 
-                        Cycles.add<system>(30_000_000_000);
-                        let pk_result = await IC.ecdsa_public_key({
+                        let pk_result = await (with cycles = 30_000_000_000) IC.ecdsa_public_key({
                             canister_id = null;
                             derivation_path = blobs;
                             key_id = { curve = #secp256k1; name = config.key_name };
@@ -188,7 +179,7 @@ module {
             };
         };
 
-        // Send transaction with comprehensive validation
+        // Send transaction with comprehensive validation and broadcasting
         public func sendTransaction(
             from_address: Text,
             to_address: Text,
@@ -310,12 +301,145 @@ module {
                                         case (#ok(signed_tx)) {
                                             let serialized = Transaction.serialize_transaction(signed_tx);
 
+                                            // Broadcast transaction
+                                            switch (await broadcastTransaction(serialized)) {
+                                                case (#err(error)) { return #err(error) };
+                                                case (#ok(transaction_id)) {
+                                                    #ok({
+                                                        transaction_id = transaction_id;
+                                                        serialized_tx = serialized;
+                                                        fee_paid = transaction_fee;
+                                                        inputs_used = selected_utxos;
+                                                        outputs_created = outputs;
+                                                    })
+                                                };
+                                            };
+                                        };
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+        };
+
+        // Build and sign transaction without broadcasting
+        public func buildTransaction(
+            from_address: Text,
+            to_address: Text,
+            amount: Nat64,
+            fee: ?Nat64,
+            derivation_path: ?Text
+        ) : async Result<{serialized_tx: Text; fee_paid: Nat64}> {
+            // Same validation and building logic as sendTransaction but without broadcasting
+            switch (Validation.validateAddress(from_address)) {
+                case (#err(error)) { return #err(error) };
+                case (#ok(_)) {};
+            };
+
+            switch (Validation.validateAddress(to_address)) {
+                case (#err(error)) { return #err(error) };
+                case (#ok(_)) {};
+            };
+
+            switch (Validation.validateAmount(amount, true)) {
+                case (#err(error)) { return #err(error) };
+                case (#ok(_)) {};
+            };
+
+            let transaction_fee = switch (fee) {
+                case (null) { estimateTransactionFee(1, 2) };
+                case (?f) {
+                    switch (Validation.validateFee(f)) {
+                        case (#err(error)) { return #err(error) };
+                        case (#ok(validated_fee)) { validated_fee };
+                    };
+                };
+            };
+
+            if (transaction_fee > config.max_fee) {
+                return #err(Errors.validationError(
+                    "Fee " # debug_show(transaction_fee) #
+                    " exceeds maximum allowed fee " # debug_show(config.max_fee)
+                ));
+            };
+
+            switch (await selectCoinsForTransaction(from_address, amount, transaction_fee)) {
+                case (#err(error)) { return #err(error) };
+                case (#ok(selected_utxos)) {
+                    switch (Address.decodeAddress(to_address)) {
+                        case (#err(error)) { return #err(error) };
+                        case (#ok(recipient_info)) {
+                            switch (Address.decodeAddress(from_address)) {
+                                case (#err(error)) { return #err(error) };
+                                case (#ok(change_info)) {
+                                    let total_input = Array.foldLeft<Types.UTXO, Nat64>(
+                                        selected_utxos, 0, func(acc, utxo) { acc + utxo.amount }
+                                    );
+
+                                    let change_amount = total_input - amount - transaction_fee;
+                                    let outputs = if (change_amount >= Constants.DUST_THRESHOLD) {
+                                        [
+                                            {
+                                                amount = amount;
+                                                scriptPublicKey = {
+                                                    version = 0 : Nat16;
+                                                    scriptPublicKey = recipient_info.script_public_key;
+                                                };
+                                            },
+                                            {
+                                                amount = change_amount;
+                                                scriptPublicKey = {
+                                                    version = 0 : Nat16;
+                                                    scriptPublicKey = change_info.script_public_key;
+                                                };
+                                            }
+                                        ]
+                                    } else {
+                                        [
+                                            {
+                                                amount = amount;
+                                                scriptPublicKey = {
+                                                    version = 0 : Nat16;
+                                                    scriptPublicKey = recipient_info.script_public_key;
+                                                };
+                                            }
+                                        ]
+                                    };
+
+                                    let inputs = Array.map<Types.UTXO, Types.TransactionInput>(
+                                        selected_utxos,
+                                        func(utxo) {
+                                            {
+                                                previousOutpoint = {
+                                                    transactionId = utxo.transactionId;
+                                                    index = utxo.index;
+                                                };
+                                                signatureScript = "";
+                                                sequence = 0;
+                                                sigOpCount = 1;
+                                            }
+                                        }
+                                    );
+
+                                    let unsigned_tx : Types.KaspaTransaction = {
+                                        version = 0;
+                                        inputs = inputs;
+                                        outputs = outputs;
+                                        lockTime = 0;
+                                        subnetworkId = "0000000000000000000000000000000000000000";
+                                        gas = 0;
+                                        payload = "";
+                                    };
+
+                                    switch (await signTransaction(unsigned_tx, selected_utxos, derivation_path)) {
+                                        case (#err(error)) { return #err(error) };
+                                        case (#ok(signed_tx)) {
+                                            let serialized = Transaction.serialize_transaction(signed_tx);
                                             #ok({
-                                                transaction_id = ""; // Would be set after submission
                                                 serialized_tx = serialized;
                                                 fee_paid = transaction_fee;
-                                                inputs_used = selected_utxos;
-                                                outputs_created = outputs;
                                             })
                                         };
                                     };
@@ -383,22 +507,18 @@ module {
             let url = "https://" # config.api_host # "/addresses/" # address # "/utxos";
             let request_headers = [
                 { name = "Content-Type"; value = "application/json" },
-                { name = "User-Agent"; value = "kaspa-production-wallet" }
+                { name = "User-Agent"; value = "icp-kaspa-wallet" }
             ];
 
             try {
-                Cycles.add<system>(230_949_972_000);
-
-                let response = await IC.http_request({
+                let response = await (with cycles = 230_949_972_000) IC.http_request({
                     url = url;
                     max_response_bytes = ?16384; // Increased for production
                     headers = request_headers;
                     body = null;
                     method = #get;
-                    transform = ?{
-                        function = transform;
-                        context = Blob.fromArray([]);
-                    };
+                    is_replicated = ?false;
+                    transform = null;
                 });
 
                 if (response.status != 200) {
@@ -455,84 +575,102 @@ module {
         private func parseUTXOEntry(utxo_json: Json.Json) : Result.Result<ExtendedUTXO, Errors.KaspaError> {
             switch (utxo_json) {
                 case (#object_(fields)) {
-                    // Extract required fields from UTXO JSON
+                    // Extract required fields from UTXO JSON according to API docs
                     var transaction_id: ?Text = null;
                     var index: ?Nat32 = null;
                     var amount: ?Nat64 = null;
-                    var script_version: ?Nat16 = null;
                     var script_public_key: ?Text = null;
                     var address: ?Text = null;
-                    var confirmations: ?Nat = null;
                     var is_coinbase: ?Bool = null;
 
                     for ((key, value) in fields.vals()) {
                         switch (key) {
-                            case ("transactionId") {
-                                switch (value) {
-                                    case (#string(tx_id)) { transaction_id := ?tx_id };
-                                    case (_) { return #err(Errors.internalError("Invalid transactionId format")) };
-                                };
-                            };
-                            case ("index") {
-                                switch (value) {
-                                    case (#number(#int(idx))) {
-                                        index := ?Nat32.fromNat(Int.abs(idx));
-                                    };
-                                    case (#number(#float(idx))) {
-                                        index := ?Nat32.fromNat(Int.abs(Float.toInt(idx)));
-                                    };
-                                    case (_) { return #err(Errors.internalError("Invalid index format")) };
-                                };
-                            };
-                            case ("amount") {
-                                switch (value) {
-                                    case (#number(#int(amt))) {
-                                        amount := ?Nat64.fromNat(Int.abs(amt));
-                                    };
-                                    case (#number(#float(amt))) {
-                                        amount := ?Nat64.fromNat(Int.abs(Float.toInt(amt)));
-                                    };
-                                    case (_) { return #err(Errors.internalError("Invalid amount format")) };
-                                };
-                            };
-                            case ("scriptVersion") {
-                                switch (value) {
-                                    case (#number(#int(version))) {
-                                        script_version := ?Nat16.fromNat(Int.abs(version));
-                                    };
-                                    case (#number(#float(version))) {
-                                        script_version := ?Nat16.fromNat(Int.abs(Float.toInt(version)));
-                                    };
-                                    case (_) { return #err(Errors.internalError("Invalid scriptVersion format")) };
-                                };
-                            };
-                            case ("scriptPublicKey") {
-                                switch (value) {
-                                    case (#string(script)) { script_public_key := ?script };
-                                    case (_) { return #err(Errors.internalError("Invalid scriptPublicKey format")) };
-                                };
-                            };
                             case ("address") {
                                 switch (value) {
                                     case (#string(addr)) { address := ?addr };
                                     case (_) { return #err(Errors.internalError("Invalid address format")) };
                                 };
                             };
-                            case ("confirmations") {
+                            // Parse outpoint object
+                            case ("outpoint") {
                                 switch (value) {
-                                    case (#number(#int(conf))) {
-                                        confirmations := ?Int.abs(conf);
+                                    case (#object_(outpoint_obj)) {
+                                        for ((k, v) in outpoint_obj.vals()) {
+                                            switch (k, v) {
+                                                case ("transactionId", #string(txid)) {
+                                                    transaction_id := ?txid;
+                                                };
+                                                case ("index", #number(#int(idx))) {
+                                                    index := ?Nat32.fromNat(Int.abs(idx));
+                                                };
+                                                case ("index", #number(#float(idx))) {
+                                                    index := ?Nat32.fromNat(Int.abs(Float.toInt(idx)));
+                                                };
+                                                case _ {};
+                                            };
+                                        };
                                     };
-                                    case (#number(#float(conf))) {
-                                        confirmations := ?Int.abs(Float.toInt(conf));
-                                    };
-                                    case (_) { confirmations := ?0 }; // Default to 0 if missing
+                                    case (_) { return #err(Errors.internalError("Invalid outpoint format")) };
                                 };
                             };
-                            case ("isCoinbase") {
+                            // Parse utxoEntry object
+                            case ("utxoEntry") {
                                 switch (value) {
-                                    case (#bool(coinbase)) { is_coinbase := ?coinbase };
-                                    case (_) { is_coinbase := ?false }; // Default to false
+                                    case (#object_(entry_obj)) {
+                                        for ((k, v) in entry_obj.vals()) {
+                                            switch (k, v) {
+                                                // Amount can be an array of strings or a direct string
+                                                case ("amount", #array(amount_array)) {
+                                                    if (amount_array.size() > 0) {
+                                                        let first_element = amount_array[0];
+                                                        switch (first_element) {
+                                                            case (#string(amount_str)) {
+                                                                // Parse amount from string
+                                                                var parsed_amount: Nat64 = 0;
+                                                                for (c in Text.toIter(amount_str)) {
+                                                                    if (c >= '0' and c <= '9') {
+                                                                        let digit = Nat32.toNat(Char.toNat32(c) - Char.toNat32('0'));
+                                                                        parsed_amount := parsed_amount * 10 + Nat64.fromNat(digit);
+                                                                    };
+                                                                };
+                                                                amount := ?parsed_amount;
+                                                            };
+                                                            case (_) { return #err(Errors.internalError("Invalid amount array format: " # debug_show(first_element))) };
+                                                        };
+                                                    } else {
+                                                        return #err(Errors.internalError("Empty amount array"));
+                                                    };
+                                                };
+                                                // Try direct string amount as fallback
+                                                case ("amount", #string(amount_str)) {
+                                                    var parsed_amount: Nat64 = 0;
+                                                    for (c in Text.toIter(amount_str)) {
+                                                        if (c >= '0' and c <= '9') {
+                                                            let digit = Nat32.toNat(Char.toNat32(c) - Char.toNat32('0'));
+                                                            parsed_amount := parsed_amount * 10 + Nat64.fromNat(digit);
+                                                        };
+                                                    };
+                                                    amount := ?parsed_amount;
+                                                };
+                                                // Parse nested scriptPublicKey object
+                                                case ("scriptPublicKey", #object_(spk_obj)) {
+                                                    for ((spk_key, spk_value) in spk_obj.vals()) {
+                                                        switch (spk_key, spk_value) {
+                                                            case ("scriptPublicKey", #string(spk)) {
+                                                                script_public_key := ?spk;
+                                                            };
+                                                            case _ {};
+                                                        };
+                                                    };
+                                                };
+                                                case ("isCoinbase", #bool(coinbase)) {
+                                                    is_coinbase := ?coinbase;
+                                                };
+                                                case _ {};
+                                            };
+                                        };
+                                    };
+                                    case (_) { return #err(Errors.internalError("Invalid utxoEntry format")) };
                                 };
                             };
                             case (_) { /* Ignore unknown fields */ };
@@ -540,28 +678,28 @@ module {
                     };
 
                     // Validate required fields
-                    switch (transaction_id, index, amount, script_version, script_public_key, address) {
-                        case (?tx_id, ?idx, ?amt, ?script_ver, ?script_key, ?addr) {
+                    switch (transaction_id, index, amount, script_public_key, address) {
+                        case (?tx_id, ?idx, ?amt, ?script_key, ?addr) {
                             let utxo: Types.UTXO = {
                                 transactionId = tx_id;
                                 index = idx;
                                 amount = amt;
-                                scriptVersion = script_ver;
+                                scriptVersion = 0; // Default version
                                 scriptPublicKey = script_key;
                                 address = addr;
                             };
 
                             let extended_utxo: ExtendedUTXO = {
                                 utxo = utxo;
-                                confirmations = switch (confirmations) { case (?c) c; case null 0 };
+                                confirmations = 1; // Assume confirmed if returned by API
                                 is_coinbase = switch (is_coinbase) { case (?c) c; case null false };
-                                maturity = null; // Could be calculated based on block height
+                                maturity = null;
                             };
 
                             #ok(extended_utxo)
                         };
-                        case (_, _, _, _, _, _) {
-                            #err(Errors.internalError("Missing required UTXO fields"))
+                        case (_, _, _, _, _) {
+                            #err(Errors.internalError("Missing required UTXO fields: " # debug_show((transaction_id, index, amount, script_public_key, address))))
                         };
                     };
                 };
@@ -649,16 +787,23 @@ module {
                             case (?sighash) {
                                 try {
                                     // Sign the hash using IC ECDSA
-                                    Cycles.add<system>(30_000_000_000);
-                                    let signature_result = await IC.sign_with_ecdsa({
+                                    let signature_result = await (with cycles = 30_000_000_000) IC.sign_with_ecdsa({
                                         message_hash = Blob.fromArray(sighash);
                                         derivation_path = derivation_blobs;
                                         key_id = { curve = #secp256k1; name = config.key_name };
                                     });
 
-                                    // Create DER-encoded signature script
-                                    let signature_der = Blob.toArray(signature_result.signature);
-                                    let signature_script = Address.hexFromArray(signature_der);
+                                    // Create signature script with proper push format for Kaspa
+                                    let signature_bytes = Blob.toArray(signature_result.signature);
+                                    let sighash_type: Nat8 = 0x01; // SigHashAll
+
+                                    // Format as push script: [length][signature][sighash_type]
+                                    let script_bytes = Array.flatten<Nat8>([
+                                        [Nat8.fromNat(signature_bytes.size() + 1)], // Length prefix
+                                        signature_bytes,                             // Raw signature
+                                        [sighash_type]                              // Sighash type
+                                    ]);
+                                    let signature_script = Address.hexFromArray(script_bytes);
 
                                     // Create signed input
                                     let signed_input : Types.TransactionInput = {
@@ -696,6 +841,188 @@ module {
             // Simple fee estimation based on transaction size
             let estimated_size = inputs * 150 + outputs * 35 + 10; // Rough estimation
             Nat64.fromNat(estimated_size) * config.default_fee_rate
+        };
+
+        // Broadcast a signed transaction to the Kaspa network
+        private func broadcastTransaction(serialized_tx: Text) : async Result<Text> {
+            let url = "https://" # config.api_host # "/transactions";
+            let request_headers = [
+                { name = "Content-Type"; value = "application/json" },
+                { name = "User-Agent"; value = "kaspa-production-wallet" }
+            ];
+
+            // The serialized transaction is already in JSON format
+            let request_body = serialized_tx;
+
+            try {
+                let response = await (with cycles = 230_949_972_000) IC.http_request({
+                    url = url;
+                    max_response_bytes = ?4096;
+                    headers = request_headers;
+                    body = ?Text.encodeUtf8(request_body);
+                    method = #post;
+                    is_replicated = ?false;
+                    transform = null;
+                });
+
+                if (response.status != 200) {
+                    let decoded_text = switch (Text.decodeUtf8(response.body)) {
+                        case (null) { "Unknown error" };
+                        case (?text) { text };
+                    };
+                    return #err(Errors.networkError(
+                        "Transaction broadcast failed: " # decoded_text,
+                        ?response.status
+                    ));
+                };
+
+                let decoded_text = switch (Text.decodeUtf8(response.body)) {
+                    case (null) {
+                        return #err(Errors.networkError("Failed to decode broadcast response", ?response.status));
+                    };
+                    case (?text) { text };
+                };
+
+                // Parse the response to extract the transaction ID
+                switch (Json.parse(decoded_text)) {
+                    case (#err(e)) {
+                        #err(Errors.internalError("Failed to parse broadcast response JSON: " # debug_show(e)))
+                    };
+                    case (#ok(json)) {
+                        switch (json) {
+                            case (#object_(fields)) {
+                                // Look for transaction ID in the response
+                                for ((key, value) in fields.vals()) {
+                                    switch (key) {
+                                        case ("transactionId" or "txid" or "id") {
+                                            switch (value) {
+                                                case (#string(tx_id)) { return #ok(tx_id) };
+                                                case (_) {};
+                                            };
+                                        };
+                                        case (_) {};
+                                    };
+                                };
+                                // If no transaction ID found, return a generic success message
+                                #ok("Transaction broadcast successful")
+                            };
+                            case (_) {
+                                #err(Errors.internalError("Unexpected broadcast response format"))
+                            };
+                        }
+                    };
+                }
+            } catch (e) {
+                #err(Errors.networkError("HTTP request failed: " # Error.message(e), null))
+            }
+        };
+
+        // Broadcast a pre-built transaction
+        public func broadcastSerializedTransaction(serialized_tx: Text) : async Result<Text> {
+            // Validate the transaction format before broadcasting
+            if (Text.size(serialized_tx) == 0) {
+                return #err(Errors.validationError("Empty transaction data"));
+            };
+
+            await broadcastTransaction(serialized_tx)
+        };
+
+        // Get transaction status by transaction ID
+        public func getTransactionStatus(transaction_id: Text) : async Result<{status: Text; confirmations: ?Nat}> {
+            if (Text.size(transaction_id) == 0) {
+                return #err(Errors.validationError("Empty transaction ID"));
+            };
+
+            let url = "https://" # config.api_host # "/transactions/" # transaction_id;
+            let request_headers = [
+                { name = "Content-Type"; value = "application/json" },
+                { name = "User-Agent"; value = "kaspa-production-wallet" }
+            ];
+
+            try {
+                let response = await (with cycles = 230_949_972_000) IC.http_request({
+                    url = url;
+                    max_response_bytes = ?4096;
+                    headers = request_headers;
+                    body = null;
+                    method = #get;
+                    is_replicated = ?false;
+                    transform = null;
+                });
+
+                if (response.status != 200) {
+                    let decoded_text = switch (Text.decodeUtf8(response.body)) {
+                        case (null) { "Unknown error" };
+                        case (?text) { text };
+                    };
+                    return #err(Errors.networkError(
+                        "Transaction status fetch failed: " # decoded_text,
+                        ?response.status
+                    ));
+                };
+
+                let decoded_text = switch (Text.decodeUtf8(response.body)) {
+                    case (null) {
+                        return #err(Errors.networkError("Failed to decode transaction status response", ?response.status));
+                    };
+                    case (?text) { text };
+                };
+
+                // Parse the response to extract transaction status
+                switch (Json.parse(decoded_text)) {
+                    case (#err(e)) {
+                        #err(Errors.internalError("Failed to parse transaction status JSON: " # debug_show(e)))
+                    };
+                    case (#ok(json)) {
+                        switch (json) {
+                            case (#object_(fields)) {
+                                var status: ?Text = null;
+                                var confirmations: ?Nat = null;
+
+                                for ((key, value) in fields.vals()) {
+                                    switch (key) {
+                                        case ("status" or "is_accepted") {
+                                            switch (value) {
+                                                case (#string(s)) { status := ?s };
+                                                case (#bool(true)) { status := ?"confirmed" };
+                                                case (#bool(false)) { status := ?"pending" };
+                                                case (_) {};
+                                            };
+                                        };
+                                        case ("confirmations" or "confirmation_count") {
+                                            switch (value) {
+                                                case (#number(#int(conf))) {
+                                                    confirmations := ?Int.abs(conf);
+                                                };
+                                                case (#number(#float(conf))) {
+                                                    confirmations := ?Int.abs(Float.toInt(conf));
+                                                };
+                                                case (_) {};
+                                            };
+                                        };
+                                        case (_) {};
+                                    };
+                                };
+
+                                let final_status = switch (status) {
+                                    case (?s) { s };
+                                    case (null) { "unknown" };
+                                };
+
+                                #ok({
+                                    status = final_status;
+                                    confirmations = confirmations;
+                                })
+                            };
+                            case (_) {
+                                #err(Errors.internalError("Unexpected transaction status response format"))
+                            };
+                        }
+                    };
+                }
+            } catch (e) {
+                #err(Errors.networkError("HTTP request failed: " # Error.message(e), null))
+            }
         };
 
 

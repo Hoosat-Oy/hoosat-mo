@@ -34,7 +34,7 @@ The library is organized into focused modules:
 - **`errors.mo`** - Comprehensive error handling with structured error types
 - **`validation.mo`** - Input validation and security checks
 - **`address_v2.mo`** - Enhanced address operations with proper error handling
-- **`wallet.mo`** - Production-ready wallet functionality with comprehensive features
+- **`wallet.mo`** - Wallet functionality with comprehensive features
 
 #### Legacy Modules (Maintained for backward compatibility)
 - **`types.mo`** - Core data structures (KaspaTransaction, UTXO, TransactionInput/Output)

@@ -5,6 +5,12 @@
       "type": "motoko",
       "main": "src/kaspa_test_tecdsa/main.mo",
       "init_cycles": 2000000000000
+    },
+
+    "wallet_broadcast_example": {
+      "type": "motoko",
+      "main": "examples/wallet_broadcast_example.mo",
+      "init_cycles": 3000000000000
     }
   },
   "defaults": {
