@@ -7,7 +7,7 @@ import Result "mo:base/Result";
 persistent actor WalletBroadcastExample {
 
     // Initialize a mainnet wallet
-    transient let wallet = Wallet.createMainnetWallet("dfx_test_key");
+    transient let wallet = Wallet.createMainnetWallet("dfx_test_key", ?"hoosat");
 
     // Example: Build and broadcast a transaction in one step
     public func sendKaspa(

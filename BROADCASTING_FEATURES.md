@@ -82,7 +82,7 @@ let status = await wallet.getTransactionStatus(tx_id);
 
 ```motoko
 // Initialize wallet
-let wallet = Wallet.createMainnetWallet("dfx_test_key");
+let wallet = Wallet.createMainnetWallet("dfx_test_key", ?"kaspa");
 
 // Generate address
 let addr_result = await wallet.generateAddress(null, null);

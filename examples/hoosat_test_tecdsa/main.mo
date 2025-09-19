@@ -17,19 +17,22 @@ import Json "mo:json";
 
 import IC "ic:aaaaa-aa";
 
-import Address "../address";
-import Transaction "../transaction";
-import Types "../types";
-import Sighash "../sighash";
+import Address "../../src/address";
+import Transaction "../../src/transaction";
+import Types "../../src/types";
+import SighashHoosat "sighash_hoosat";
 
 // Updated modules with improved error handling
 import Result "mo:base/Result";
-import Errors "../errors";
-import Validation "../validation";
+import Errors "../../src/errors";
+import Validation "../../src/validation";
 
 persistent actor {
     private let key_id = "dfx_test_key";
     private let DUST_THRESHOLD : Nat64 = 1_000; // Minimum output amount in sompi
+
+    // Hoosat uses Blake3 instead of Blake2b for signature hashing
+    // This implementation uses the Blake3 library via SighashHoosat module
 
     private func sign_digest(digest: [Nat8]) : async ?[Nat8] {
         try {
@@ -115,13 +118,13 @@ persistent actor {
         Blob.fromArray(Buffer.toArray(bytes))
     };
 
-    // Fetch UTXOs for an address from Kaspa mainnet
+    // Fetch UTXOs for an address from Hoosat mainnet
     public func fetch_utxos(address: Text) : async ?[Types.UTXO] {
-        let host = "api.kaspa.org";
+        let host = "api.network.hoosat.fi";
         let url = "https://" # host # "/addresses/" # address # "/utxos";
         let request_headers = [
             { name = "Content-Type"; value = "application/json" },
-            { name = "User-Agent"; value = "kaspa-transaction-canister" }
+            { name = "User-Agent"; value = "hoosat-transaction-canister" }
         ];
 
         let http_request : IC.http_request_args = {
@@ -290,27 +293,8 @@ persistent actor {
         }
     };
 
-    public func get_kaspa_address_legacy(derivation_path: ?Text) : async Text {
-        let maybe_pk = await get_ecdsa_pubkey(derivation_path);
-        switch (maybe_pk) {
-            case (null) {
-                Debug.print("🚨 Failed to fetch ECDSA public key");
-                "";
-            };
-            case (?pk) {
-                switch (Address.address_from_pubkey(pk, Address.ECDSA)) {
-                    case ("") {
-                        Debug.print("🚨 Failed to generate Kaspa address");
-                        "";
-                    };
-                    case (addr) { addr };
-                }
-            };
-        }
-    };
-
     // Main address generation using improved modules
-    public func get_kaspa_address(derivation_path: ?Text) : async Text {
+    public func get_hoosat_address(derivation_path: ?Text) : async Text {
         let maybe_pk = await get_ecdsa_pubkey(derivation_path);
         switch (maybe_pk) {
             case (null) {
@@ -318,9 +302,9 @@ persistent actor {
                 "";
             };
             case (?pk) {
-                switch (Address.generateAddress(pk, 1, ?"kaspa")) { // 1 = ECDSA, pk is already Blob
+                switch (Address.generateAddress(pk, 1, ?"hoosat")) { // 1 = ECDSA, pk is already Blob
                     case (#err(error)) {
-                        Debug.print("🚨 Failed to generate Kaspa address: " # Errors.errorToText(error));
+                        Debug.print("🚨 Failed to generate Hoosat address: " # Errors.errorToText(error));
                         "";
                     };
                     case (#ok(result)) { result.address };
@@ -359,23 +343,21 @@ persistent actor {
         };
 
         // --- Decode recipient address ---
-        let decoded = Address.decode_address(recipient_address);
+        let decoded = Address.decodeAddress(recipient_address, ?"hoosat");
         switch (decoded) {
-            case (null) {
-                Debug.print("🚨 Invalid recipient address");
+            case (#err(error)) {
+                Debug.print("🚨 Invalid recipient address: " # Errors.errorToText(error));
                 return null;
             };
-            case (? (recipient_addr_type, pubkey)) {
+            case (#ok(addressInfo)) {
+                let recipient_addr_type = addressInfo.addr_type;
+                let pubkey = addressInfo.payload;
                 // --- Convert pubkey to hex for debugging ---
                 let pubkey_hex = Address.hex_from_array(pubkey);
                 Debug.print("Recipient decoded address: type=" # Nat.toText(recipient_addr_type) # ", pubkey=" # pubkey_hex);
 
-                // --- Convert to scriptPublicKey ---
-                let recipient_script = Address.pubkey_to_script(pubkey, recipient_addr_type);
-                if (recipient_script == "") {
-                    Debug.print("🚨 Failed to generate recipient scriptPublicKey");
-                    return null;
-                };
+                // --- Use the script public key from decoded address ---
+                let recipient_script = addressInfo.script_public_key;
                 Debug.print("Recipient scriptPublicKey: " # recipient_script);
 
                 // --- Get sender's scriptPublicKey for change output ---
@@ -386,19 +368,13 @@ persistent actor {
                         return null;
                     };
                     case (?pk) {
-                        let addr = Address.address_from_pubkey(pk, Address.ECDSA);
-                        if (addr == "") {
-                            Debug.print("🚨 Failed to generate change address");
-                            return null;
-                        };
-                        let decoded_addr = Address.decode_address(addr);
-                        switch (decoded_addr) {
-                            case (null) {
-                                Debug.print("🚨 Failed to decode change address");
+                        switch (Address.generateAddress(pk, Address.ECDSA, ?"hoosat")) {
+                            case (#err(error)) {
+                                Debug.print("🚨 Failed to generate change address: " # Errors.errorToText(error));
                                 return null;
                             };
-                            case (? (_, change_pubkey)) {
-                                Address.pubkey_to_script(change_pubkey, Address.ECDSA)
+                            case (#ok(result)) {
+                                result.script_public_key
                             };
                         };
                     };
@@ -411,7 +387,7 @@ persistent actor {
 
 
                 // --- Fetch UTXO dynamically ---
-                let sender_address = await get_kaspa_address(null);
+                let sender_address = await get_hoosat_address(null);
                 let utxos = await fetch_utxos(sender_address);
                 let utxo = switch (utxos) {
                     case (null) {
@@ -466,7 +442,7 @@ persistent actor {
                 };
 
                 // --- Prepare reused values for sighash ---
-                var reused: Sighash.SighashReusedValues = {
+                var reused: SighashHoosat.SighashReusedValues = {
                     var previousOutputsHash = null;
                     var sequencesHash = null;
                     var sigOpCountsHash = null;
@@ -474,15 +450,11 @@ persistent actor {
                     var payloadHash = null;
                 };
 
+
                 // --- Calculate digest ---
                 var sighash_digest: ?[Nat8] = null;
-                // if (addr_type == Address.ECDSA) {
-                //     sighash_digest := Sighash.calculate_sighash_ecdsa(tx, 0, utxo, Sighash.SigHashAll, reused);
-                // } else {
-                //     Debug.print("Unsupported addr_type for signing");
-                //     return null;
-                // };
-                sighash_digest := Sighash.calculate_sighash_ecdsa(tx, 0, utxo, Sighash.SigHashAll, reused);
+
+                sighash_digest := SighashHoosat.calculate_sighash_ecdsa(tx, 0, utxo, SighashHoosat.SigHashAll, reused);
 
                 // --- Unwrap digest safely ---
                 let digest: [Nat8] = switch (sighash_digest) {
@@ -496,6 +468,7 @@ persistent actor {
                 // --- Print the digest ---
                 let digest_hex = Address.hex_from_array(digest);
                 Debug.print("Sighash digest (hex): " # digest_hex);
+                Debug.print("Digest length: " # Nat.toText(digest.size()));
 
                 // --- Sign digest ---
                 let signature_opt: ?[Nat8] = await sign_digest(digest);
@@ -512,12 +485,17 @@ persistent actor {
                 // Convert signature to hex
                 let sig_hex = Address.hex_from_array(signature);
                 Debug.print("Signature (hex): " # sig_hex);
+                Debug.print("Signature length: " # Nat.toText(signature.size()));
 
                 // --- Build signatureScript ---
                 let signature_script = Buffer.Buffer<Nat8>(0);
                 signature_script.add(65); // OP_DATA_65 (length of 64-byte signature + 1-byte hashType)
                 signature_script.append(Buffer.fromArray(signature));
-                signature_script.add(Sighash.SigHashAll); // Append hashType (0x01)
+                signature_script.add(SighashHoosat.SigHashAll); // Append hashType (0x01)
+
+                let signature_script_hex = Address.hex_from_array(Buffer.toArray(signature_script));
+                Debug.print("Complete signature script (hex): " # signature_script_hex);
+                Debug.print("Signature script length: " # Nat.toText(Buffer.toArray(signature_script).size()));
 
                 // --- Update transaction input with signatureScript ---
                 let updated_inputs = Array.mapEntries(tx.inputs, func (input: Types.TransactionInput, i: Nat) : Types.TransactionInput {
