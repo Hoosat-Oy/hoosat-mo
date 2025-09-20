@@ -1,7 +1,6 @@
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
-import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import Error "mo:base/Error";
 import Int "mo:base/Int";
@@ -36,8 +35,7 @@ persistent actor {
 
     private func sign_digest(digest: [Nat8]) : async ?[Nat8] {
         try {
-            Cycles.add<system>(30_000_000_000);
-            let sig = await IC.sign_with_ecdsa({
+            let sig = await (with cycles = 30_000_000_000) IC.sign_with_ecdsa({
                 message_hash = Blob.fromArray(digest);
                 derivation_path = [];
                 key_id = { curve = #secp256k1; name = key_id };
@@ -140,9 +138,7 @@ persistent actor {
             };
         };
 
-        Cycles.add<system>(230_949_972_000);
-
-        let response = await IC.http_request(http_request);
+        let response = await (with cycles = 230_949_972_000) IC.http_request(http_request);
 
         switch (response.status) {
             case (200) {
@@ -263,25 +259,93 @@ persistent actor {
         }
     };
 
+    private func sign_digest_schnorr(digest: [Nat8]) : async ?[Nat8] {
+        try {
+            let sig = await (with cycles = 30_000_000_000) IC.sign_with_schnorr({
+                message = Blob.fromArray(digest);
+                derivation_path = [];
+                key_id = { algorithm = #bip340secp256k1; name = key_id };
+                aux = null;
+            });
+            ?Blob.toArray(sig.signature)
+        } catch (e) {
+            Debug.print("Schnorr signing failed: " # Error.message(e));
+            null
+        }
+    };
+
+    private func get_schnorr_pubkey(derivation_path: ?Text) : async ?Blob {
+        try {
+            let path = switch (derivation_path) {
+                case (null) {
+                    Debug.print("🔍 Using empty derivation path for Schnorr (null)");
+                    []
+                };
+                case (?text) {
+                    Debug.print("🔍 Parsing Schnorr derivation path: " # text);
+                    switch (parseDerivationPath(text)) {
+                        case (null) {
+                            Debug.print("🚨 Failed to parse Schnorr derivation path: " # text);
+                            return null;
+                        };
+                        case (?p) {
+                            Debug.print("🔍 Parsed Schnorr derivation path has " # Nat.toText(p.size()) # " components");
+                            p
+                        };
+                    };
+                };
+            };
+            Debug.print("Using derivation path for Schnorr: " # debug_show(path));
+
+            let pk = await (with cycles = 30_000_000_000) IC.schnorr_public_key({
+                canister_id = null;
+                derivation_path = path;
+                key_id = { algorithm = #bip340secp256k1; name = key_id };
+            });
+            Debug.print("Schnorr public key length: " # Nat.toText(pk.public_key.size()));
+            Debug.print("Schnorr public key hex: " # Address.hex_from_array(Blob.toArray(pk.public_key)));
+
+            // Extract x-only public key (32 bytes) from compressed key (33 bytes)
+            let pubkey_bytes = Blob.toArray(pk.public_key);
+            if (pubkey_bytes.size() == 33) {
+                // Remove the first byte (compression prefix) to get 32-byte x-only key
+                let x_only_key = Array.tabulate<Nat8>(32, func(i) = pubkey_bytes[i + 1]);
+                Debug.print("X-only public key hex: " # Address.hex_from_array(x_only_key));
+                ?Blob.fromArray(x_only_key)
+            } else {
+                ?pk.public_key
+            }
+        } catch (e) {
+            Debug.print("Schnorr fetch failed: " # Error.message(e));
+            null
+        }
+    };
+
     private func get_ecdsa_pubkey(derivation_path: ?Text) : async ?Blob {
         try {
 
             let path = switch (derivation_path) {
-                case (null) { [] };
+                case (null) {
+                    Debug.print("🔍 Using empty derivation path (null)");
+                    []
+                };
                 case (?text) {
+                    Debug.print("🔍 Parsing derivation path: " # text);
                     switch (parseDerivationPath(text)) {
                         case (null) {
                             Debug.print("🚨 Failed to parse derivation path: " # text);
                             return null;
                         };
-                        case (?p) { p };
+                        case (?p) {
+                            Debug.print("🔍 Parsed derivation path has " # Nat.toText(p.size()) # " components");
+                            p
+                        };
                     };
                 };
             };
             Debug.print("Using derivation path: " # debug_show(path));
 
-            Cycles.add<system>(30_000_000_000);
-            let pk = await IC.ecdsa_public_key({
+            let pk = await (with cycles = 30_000_000_000) IC.ecdsa_public_key({
                 canister_id = null;
                 derivation_path = path;
                 key_id = { curve = #secp256k1; name = key_id };
@@ -290,6 +354,26 @@ persistent actor {
         } catch (e) {
             Debug.print("ECDSA fetch failed: " # Error.message(e));
             null
+        }
+    };
+
+    // Schnorr address generation for Hoosat
+    public func get_hoosat_address_schnorr(derivation_path: ?Text) : async Text {
+        let maybe_pk = await get_schnorr_pubkey(derivation_path);
+        switch (maybe_pk) {
+            case (null) {
+                Debug.print("🚨 Failed to fetch Schnorr public key");
+                "";
+            };
+            case (?pk) {
+                switch (Address.generateAddress(pk, 0, ?"hoosat")) { // 0 = SCHNORR, hoosat prefix
+                    case (#err(error)) {
+                        Debug.print("🚨 Failed to generate Hoosat Schnorr address: " # Errors.errorToText(error));
+                        "";
+                    };
+                    case (#ok(result)) { result.address };
+                }
+            };
         }
     };
 
@@ -332,6 +416,208 @@ persistent actor {
         }
     };
 
+    public func send_kas_schnorr(
+        recipient_address: Text,
+        amount: Nat64
+    ) : async ?Text {
+        // --- Check for dust output ---
+        if (amount < DUST_THRESHOLD) {
+            Debug.print("🚨 Output amount " # Nat64.toText(amount) # " sompi is below dust threshold of " # Nat64.toText(DUST_THRESHOLD) # " sompi");
+            return null;
+        };
+
+        // --- Decode recipient address ---
+        let decoded = Address.decodeAddress(recipient_address, ?"hoosat");
+        switch (decoded) {
+            case (#err(error)) {
+                Debug.print("🚨 Invalid recipient address: " # Errors.errorToText(error));
+                return null;
+            };
+            case (#ok(addressInfo)) {
+                let recipient_addr_type = addressInfo.addr_type;
+                let pubkey = addressInfo.payload;
+                // --- Convert pubkey to hex for debugging ---
+                let pubkey_hex = Address.hex_from_array(pubkey);
+                Debug.print("Recipient decoded address: type=" # Nat.toText(recipient_addr_type) # ", pubkey=" # pubkey_hex);
+
+                // --- Use the script public key from decoded address ---
+                let recipient_script = addressInfo.script_public_key;
+                Debug.print("Recipient scriptPublicKey: " # recipient_script);
+
+                // --- Get sender's Schnorr scriptPublicKey for change output ---
+                let maybe_pk = await get_schnorr_pubkey(null);
+                let change_script = switch (maybe_pk) {
+                    case (null) {
+                        Debug.print("🚨 Failed to fetch Schnorr public key for change address");
+                        return null;
+                    };
+                    case (?pk) {
+                        switch (Address.generateAddress(pk, Address.SCHNORR, ?"hoosat")) {
+                            case (#err(error)) {
+                                Debug.print("🚨 Failed to generate change address: " # Errors.errorToText(error));
+                                return null;
+                            };
+                            case (#ok(result)) {
+                                result.script_public_key
+                            };
+                        };
+                    };
+                };
+                if (change_script == "") {
+                    Debug.print("🚨 Failed to generate change scriptPublicKey");
+                    return null;
+                };
+                Debug.print("Change scriptPublicKey: " # change_script);
+
+                // --- Fetch UTXO dynamically ---
+                let sender_address = await get_hoosat_address_schnorr(null);
+                let utxos = await fetch_utxos(sender_address);
+                let utxo = switch (utxos) {
+                    case (null) {
+                        Debug.print("🚨 No UTXOs found for address " # sender_address);
+                        return null;
+                    };
+                    case (?utxo_array) {
+                        // Debug UTXO array for inspection
+                        Debug.print("Fetched UTXOs: " # debug_show(utxo_array));
+                        // Select the UTXO with the highest amount that meets the threshold
+                        var selected_utxo: ?Types.UTXO = null;
+                        var max_amount: Nat64 = 0;
+                        for (u in utxo_array.vals()) {
+                            Debug.print("Evaluating UTXO: txid=" # u.transactionId # ", amount=" # Nat64.toText(u.amount));
+                            if (u.amount >= amount + 10_000 and u.amount > max_amount) {
+                                selected_utxo := ?u;
+                                max_amount := u.amount;
+                            };
+                        };
+                        switch (selected_utxo) {
+                            case (null) {
+                                Debug.print("🚨 No suitable UTXO found with sufficient funds");
+                                return null;
+                            };
+                            case (?u) {
+                                Debug.print("Selected UTXO: txid=" # u.transactionId # ", amount=" # Nat64.toText(u.amount));
+                                u
+                            }
+                        }
+                    };
+                };
+
+                // --- Build transaction with normal fee to test multiple outputs with SigHashAll ---
+                let tx: Types.KaspaTransaction = Transaction.build_transaction(
+                    utxo,
+                    recipient_script,
+                    amount,
+                    10_000, // Normal fee to create change output
+                    change_script // Pass sender's scriptPublicKey for change
+                );
+
+                if (tx.inputs.size() == 0) {
+                    Debug.print("🚨 Transaction build failed: insufficient funds or invalid UTXO");
+                    return null;
+                };
+
+                Debug.print("🔍 Testing SigHashAll with multiple outputs:");
+                Debug.print("🔍 Number of outputs: " # Nat.toText(tx.outputs.size()));
+                for (i in tx.outputs.keys()) {
+                    let output = tx.outputs[i];
+                    Debug.print("🔍 Output " # Nat.toText(i) # ": amount=" # Nat64.toText(output.amount) # ", script=" # output.scriptPublicKey.scriptPublicKey);
+                };
+
+                // --- Prepare reused values for sighash ---
+                var reused: SighashHoosat.SighashReusedValues = {
+                    var previousOutputsHash = null;
+                    var sequencesHash = null;
+                    var sigOpCountsHash = null;
+                    var outputsHash = null;
+                    var payloadHash = null;
+                };
+
+                // --- Calculate digest using Hoosat Schnorr sighash ---
+                var sighash_digest: ?[Nat8] = null;
+                sighash_digest := SighashHoosat.calculate_sighash_schnorr(tx, 0, utxo, SighashHoosat.SigHashSingle, reused);
+
+                // --- Unwrap digest safely ---
+                let digest: [Nat8] = switch (sighash_digest) {
+                    case (null) {
+                        Debug.print("🚨 Failed to calculate sighash");
+                        return null;
+                    };
+                    case (?d) { d };
+                };
+
+                // --- Print the digest ---
+                let digest_hex = Address.hex_from_array(digest);
+                Debug.print("Sighash digest (hex): " # digest_hex);
+                Debug.print("Digest length: " # Nat.toText(digest.size()));
+
+                // --- Sign digest with Schnorr ---
+                let signature_opt: ?[Nat8] = await sign_digest_schnorr(digest);
+
+                // --- Unwrap signature safely ---
+                let signature: [Nat8] = switch (signature_opt) {
+                    case (null) {
+                        Debug.print("🚨 Signing failed");
+                        return null;
+                    };
+                    case (?s) { s };
+                };
+
+                // Convert signature to hex
+                let sig_hex = Address.hex_from_array(signature);
+                Debug.print("Signature (hex): " # sig_hex);
+                Debug.print("Signature length: " # Nat.toText(signature.size()));
+
+                // --- Build signatureScript for Schnorr (64 bytes + 1 hashType) ---
+                let signature_script = Buffer.Buffer<Nat8>(0);
+                signature_script.add(65); // OP_DATA_65 (length of 64-byte signature + 1-byte hashType)
+                signature_script.append(Buffer.fromArray(signature));
+                signature_script.add(SighashHoosat.SigHashSingle); // Append hashType (0x04)
+
+                let signature_script_hex = Address.hex_from_array(Buffer.toArray(signature_script));
+                Debug.print("Complete signature script (hex): " # signature_script_hex);
+                Debug.print("Signature script length: " # Nat.toText(Buffer.toArray(signature_script).size()));
+
+                // --- Update transaction input with signatureScript ---
+                let updated_inputs = Array.mapEntries(tx.inputs, func (input: Types.TransactionInput, i: Nat) : Types.TransactionInput {
+                    if (i == 0) {
+                        { input with signatureScript = Address.hex_from_array(Buffer.toArray(signature_script)) }
+                    } else {
+                        input
+                    }
+                });
+
+                let signed_tx: Types.KaspaTransaction = {
+                    tx with inputs = updated_inputs
+                };
+
+                Debug.print("🔍 Recipient script: " # recipient_script);
+                Debug.print("🔍 Change script: " # change_script);
+                Debug.print("🔍 Transaction before signing: " # debug_show(tx));
+                Debug.print("🔍 Number of outputs: " # Nat.toText(tx.outputs.size()));
+                for (i in tx.outputs.keys()) {
+                    let output = tx.outputs[i];
+                    Debug.print("🔍 Output " # Nat.toText(i) # ": amount=" # Nat64.toText(output.amount) # ", script=" # output.scriptPublicKey.scriptPublicKey);
+                };
+
+                // --- Serialize signed transaction ---
+                let serialized_tx = Transaction.serialize_transaction(signed_tx);
+                Debug.print("");
+                Debug.print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀");
+                Debug.print("🚀                HOOSAT SCHNORR TRANSACTION                🚀");
+                Debug.print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀");
+                Debug.print("");
+                Debug.print("📋 COPY THIS JSON FOR RPC:");
+                Debug.print("");
+                Debug.print(serialized_tx);
+                Debug.print("");
+                Debug.print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀");
+                Debug.print("");
+                return ?serialized_tx;
+            };
+        }
+    };
+
     public func send_kas(
         recipient_address: Text,
         amount: Nat64
@@ -368,6 +654,8 @@ persistent actor {
                         return null;
                     };
                     case (?pk) {
+                        Debug.print("🔍 Change public key hex: " # Address.hex_from_array(Blob.toArray(pk)));
+                        Debug.print("🔍 Change public key length: " # Nat.toText(Blob.toArray(pk).size()));
                         switch (Address.generateAddress(pk, Address.ECDSA, ?"hoosat")) {
                             case (#err(error)) {
                                 Debug.print("🚨 Failed to generate change address: " # Errors.errorToText(error));
@@ -427,18 +715,25 @@ persistent actor {
                 //     amount,
                 //     10_000  // fee
                 // );
-                // --- Build transaction ---
+                // --- Build transaction with normal fee to test multiple outputs with SigHashAll ---
                 let tx: Types.KaspaTransaction = Transaction.build_transaction(
                     utxo,
                     recipient_script,
                     amount,
-                    10_000, // Explicit fee
+                    10_000, // Normal fee to create change output
                     change_script // Pass sender's scriptPublicKey for change
                 );
 
                 if (tx.inputs.size() == 0) {
                     Debug.print("🚨 Transaction build failed: insufficient funds or invalid UTXO");
                     return null;
+                };
+
+                Debug.print("🔍 Testing SigHashAll with multiple outputs:");
+                Debug.print("🔍 Number of outputs: " # Nat.toText(tx.outputs.size()));
+                for (i in tx.outputs.keys()) {
+                    let output = tx.outputs[i];
+                    Debug.print("🔍 Output " # Nat.toText(i) # ": amount=" # Nat64.toText(output.amount) # ", script=" # output.scriptPublicKey.scriptPublicKey);
                 };
 
                 // --- Prepare reused values for sighash ---
@@ -454,7 +749,7 @@ persistent actor {
                 // --- Calculate digest ---
                 var sighash_digest: ?[Nat8] = null;
 
-                sighash_digest := SighashHoosat.calculate_sighash_ecdsa(tx, 0, utxo, SighashHoosat.SigHashAll, reused);
+                sighash_digest := SighashHoosat.calculate_sighash_ecdsa(tx, 0, utxo, SighashHoosat.SigHashSingle, reused);
 
                 // --- Unwrap digest safely ---
                 let digest: [Nat8] = switch (sighash_digest) {
@@ -487,11 +782,12 @@ persistent actor {
                 Debug.print("Signature (hex): " # sig_hex);
                 Debug.print("Signature length: " # Nat.toText(signature.size()));
 
-                // --- Build signatureScript ---
+                // --- Build signatureScript (must be push-only for Kaspa/Hoosat) ---
                 let signature_script = Buffer.Buffer<Nat8>(0);
                 signature_script.add(65); // OP_DATA_65 (length of 64-byte signature + 1-byte hashType)
                 signature_script.append(Buffer.fromArray(signature));
-                signature_script.add(SighashHoosat.SigHashAll); // Append hashType (0x01)
+                signature_script.add(SighashHoosat.SigHashSingle); // Append hashType (0x04)
+                // Note: No OP_CHECKSIGECDSA here - signature scripts must be push-only
 
                 let signature_script_hex = Address.hex_from_array(Buffer.toArray(signature_script));
                 Debug.print("Complete signature script (hex): " # signature_script_hex);
@@ -513,10 +809,21 @@ persistent actor {
                 Debug.print("🔍 Recipient script: " # recipient_script);
                 Debug.print("🔍 Change script: " # change_script);
                 Debug.print("🔍 Transaction before signing: " # debug_show(tx));
+                Debug.print("🔍 TX JSON for sighash: " # Transaction.serialize_transaction(tx));
 
                 // --- Serialize signed transaction ---
                 let serialized_tx = Transaction.serialize_transaction(signed_tx);
-                Debug.print("Serialized signed transaction: " # serialized_tx);
+                Debug.print("");
+                Debug.print("💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰");
+                Debug.print("💰                HOOSAT ECDSA TRANSACTION                💰");
+                Debug.print("💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰");
+                Debug.print("");
+                Debug.print("📋 COPY THIS JSON FOR RPC:");
+                Debug.print("");
+                Debug.print(serialized_tx);
+                Debug.print("");
+                Debug.print("💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰💰");
+                Debug.print("");
                 return ?serialized_tx;
 
                 // --- Submit transaction to Kaspa mainnet ---
