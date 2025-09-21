@@ -14,7 +14,7 @@ import Text "mo:base/Text";
 import Result "mo:base/Result";
 
 import Json "mo:json";
-import IC "ic:aaaaa-aa";
+import IC "mo:ic";
 
 import Errors "errors";
 import Validation "validation";
@@ -115,10 +115,10 @@ module {
                     case (#err(error)) { return #err(error) };
                     case (#ok(blobs)) {
 
-                        let pk_result = await (with cycles = 30_000_000_000) IC.ecdsa_public_key({
+                        let pk_result = await (with cycles = 30_000_000_000) IC.ic.ecdsa_public_key({
                             canister_id = null;
                             derivation_path = blobs;
-                            key_id = { curve = #secp256k1; name = config.key_name };
+                            key_id = { name = config.key_name; curve = #secp256k1 };
                         });
 
                         let pubkey_bytes = Blob.toArray(pk_result.public_key);
@@ -511,7 +511,7 @@ module {
             ];
 
             try {
-                let response = await (with cycles = 230_949_972_000) IC.http_request({
+                let response = await (with cycles = 230_949_972_000) IC.ic.http_request({
                     url = url;
                     max_response_bytes = ?16384; // Increased for production
                     headers = request_headers;
@@ -787,10 +787,10 @@ module {
                             case (?sighash) {
                                 try {
                                     // Sign the hash using IC ECDSA
-                                    let signature_result = await (with cycles = 30_000_000_000) IC.sign_with_ecdsa({
+                                    let signature_result = await (with cycles = 30_000_000_000) IC.ic.sign_with_ecdsa({
                                         message_hash = Blob.fromArray(sighash);
                                         derivation_path = derivation_blobs;
-                                        key_id = { curve = #secp256k1; name = config.key_name };
+                                        key_id = { name = config.key_name; curve = #secp256k1 };
                                     });
 
                                     // Create signature script with proper push format for Kaspa
@@ -855,7 +855,7 @@ module {
             let request_body = serialized_tx;
 
             try {
-                let response = await (with cycles = 230_949_972_000) IC.http_request({
+                let response = await (with cycles = 230_949_972_000) IC.ic.http_request({
                     url = url;
                     max_response_bytes = ?4096;
                     headers = request_headers;
@@ -940,7 +940,7 @@ module {
             ];
 
             try {
-                let response = await (with cycles = 230_949_972_000) IC.http_request({
+                let response = await (with cycles = 230_949_972_000) IC.ic.http_request({
                     url = url;
                     max_response_bytes = ?4096;
                     headers = request_headers;
