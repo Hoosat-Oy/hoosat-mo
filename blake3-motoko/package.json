@@ -1,0 +1,45 @@
+{
+  "name": "blake3-motoko",
+  "version": "1.0.0",
+  "description": "A pure Motoko implementation of the Blake3 cryptographic hash function",
+  "main": "src/Blake3.mo",
+  "scripts": {
+    "build": "make build",
+    "test": "make test",
+    "demo": "make demo",
+    "lint": "make lint",
+    "clean": "make clean"
+  },
+  "keywords": [
+    "blake3",
+    "hash",
+    "cryptography",
+    "motoko",
+    "internet-computer",
+    "ic",
+    "dfinity"
+  ],
+  "author": "Blake3 Motoko Implementation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/blake3-motoko.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/blake3-motoko/issues"
+  },
+  "homepage": "https://github.com/your-org/blake3-motoko#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {},
+  "peerDependencies": {},
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "motoko.toml",
+    "dfx.json",
+    "Makefile"
+  ]
+}

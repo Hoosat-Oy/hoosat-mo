@@ -1,0 +1,15 @@
+[package]
+name = "blake3-motoko"
+version = "1.0.0"
+edition = "2021"
+authors = ["Blake3 Motoko Implementation"]
+description = "A pure Motoko implementation of the Blake3 cryptographic hash function"
+license = "MIT"
+repository = "https://github.com/your-org/blake3-motoko"
+keywords = ["blake3", "hash", "cryptography", "motoko", "internet-computer"]
+
+[dependencies]
+
+[lib]
+name = "blake3"
+path = "src/Blake3.mo"

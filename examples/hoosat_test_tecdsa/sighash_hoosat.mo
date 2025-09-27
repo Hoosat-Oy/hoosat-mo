@@ -11,7 +11,7 @@ import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
 import Debug "mo:base/Debug";
 
-import Blake3 "mo:blake3";
+import Blake3 "../../blake3-motoko/src/Blake3";
 import Sha256 "mo:sha2/Sha256";
 
 import Types "../../src/types";
@@ -141,6 +141,14 @@ module SighashHoosat {
         domain_hash
     };
 
+    // Proper Blake3 keyed hash implementation using the blake3-motoko library
+    private func blake3_keyed_hash_impl(key: [Nat8], data: [Nat8]): [Nat8] {
+        // Use the proper Blake3 keyed hash implementation
+        let hasher = Blake3.hasherInitKeyed(key);
+        let updated_hasher = Blake3.hasherUpdate(hasher, data);
+        Blake3.hasherFinalize(updated_hasher, 32)
+    };
+
     // Blake3 hash function - matches HTND implementation
     public func blake3_256(data: [Nat8], key: ?Text): [Nat8] {
         // Create 32-byte array like HTND fixedSizeKey
@@ -163,7 +171,8 @@ module SighashHoosat {
         Debug.print("🔍 Blake3 key (hex): " # hex_from_array(fixed_key));
         Debug.print("🔍 Blake3 key length: " # Nat.toText(fixed_key.size()));
 
-        Blob.toArray(Blake3.keyed_hash(Blob.fromArray(fixed_key), Blob.fromArray(data)))
+        // Use the proper Blake3 keyed hash implementation
+        blake3_keyed_hash_impl(fixed_key, data)
     };
 
     // Get PreviousOutputsHash
@@ -292,11 +301,8 @@ module SighashHoosat {
                 Debug.print("🔍 Outputs preimage (hex): " # hex_from_array(outputs_preimage));
                 let hash = blake3_256(outputs_preimage, ?transaction_signing_schnorr_domain());
                 Debug.print("🔍 OutputsHash (Blake3): " # hex_from_array(hash));
-                // TEMPORARY: Use the correct OutputsHash from Go HTND test
-                let correct_hash = hex_to_bytes("5272a167f294ef2e2c4c79afe2f81bfd88aacbac495a1a561511e9106bcc7c88");
-                Debug.print("🔍 Correct OutputsHash (from Go): " # hex_from_array(correct_hash));
-                reusedValues.outputsHash := ?correct_hash;
-                correct_hash
+                reusedValues.outputsHash := ?hash;
+                hash
             };
         }
     };

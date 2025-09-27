@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "canisters": {
+    "blake3_test": {
+      "main": "src/Blake3Test.mo",
+      "type": "motoko"
+    },
+    "blake3_example": {
+      "main": "src/Blake3Example.mo", 
+      "type": "motoko"
+    }
+  }
+}
