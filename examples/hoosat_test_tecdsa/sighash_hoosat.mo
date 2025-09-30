@@ -11,7 +11,7 @@ import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
 import Debug "mo:base/Debug";
 
-import Blake3 "../../blake3-motoko/src/Blake3";
+import Blake3 "mo:blake3";
 import Sha256 "mo:sha2/Sha256";
 
 import Types "../../src/types";
