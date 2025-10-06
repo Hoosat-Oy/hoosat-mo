@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/Hoosat)](https://mops.one/Hoosat)
 
-Welcome to the `hoosat-mo` project, which provides a Motoko package (`hoosat-mo`) and a canister implementation for interacting with the Hoosat blockchain on the Internet Computer (IC). The `Hoosat-mo` package includes modules for generating and decoding Hoosat addresses, calculating signature hashes, building and serializing transactions, and defining common blockchain data structures. The `hoosat_ecdsa.mo` canister demonstrates how to use the package to fetch UTXOs, generate addresses, and sign ECDSA-based transactions.
+Welcome to the `Hoosat-mo` project, which provides a Motoko package (`Hoosat-mo`) and a canister implementation for interacting with the Hoosat blockchain on the Internet Computer (IC). The `Hoosat-mo` package includes modules for generating and decoding Hoosat addresses, calculating signature hashes, building and serializing transactions, and defining common blockchain data structures. The `hoosat_ecdsa.mo` canister demonstrates how to use the package to fetch UTXOs, generate addresses, and sign ECDSA-based transactions.
 
 ## Table of Contents
 
@@ -67,7 +67,7 @@ To work with the `Hoosat` canister project locally:
 2. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/codecustard/Hoosat
+   git clone https://github.com/hoosat-oy/Hoosat-mo
    cd Hoosat
    ```
 
@@ -164,8 +164,8 @@ Example call:
 Calculate a signature hash for a Hoosat transaction input:
 
 ```motoko
-import Sighash "mo:codecustard/Hoosat/src/sighash";
-import Types "mo:codecustard/Hoosat/src/types";
+import Sighash "mo:Hoosat-mo/src/sighash";
+import Types "mo:Hoosat-mo/src/types";
 
 actor {
   public func calculateSighash(tx : Types.HoosatTransaction, inputIndex : Nat, utxo : Types.UTXO) : async ?Text {
@@ -189,8 +189,8 @@ actor {
 Build a Hoosat transaction with one input and one or two outputs:
 
 ```motoko
-import Transaction "mo:codecustard/Hoosat/src/transaction";
-import Types "mo:codecustard/Hoosat/src/types";
+import Transaction "mo:Hoosat-mo/src/transaction";
+import Types "mo:Hoosat-mo/src/types";
 
 actor {
   public func createTransaction(
@@ -582,7 +582,7 @@ let tx : Types.HoosatTransaction = {
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or pull request on the [GitHub repository](https://github.com/codecustard/Hoosat-mo).
+Contributions are welcome! Please open an issue or pull request on the [GitHub repository](https://github.com/Hoosat-mo-mo).
 
 ## License
 
