@@ -19,13 +19,29 @@ module {
             return #err(Errors.invalidAddress("Address cannot be empty"));
         };
 
-        if (not Text.startsWith(address, #text("kaspa:"))) {
-            return #err(Errors.invalidAddress("Address must start with 'kaspa:' prefix"));
+        // Check if address contains a colon (basic format check)
+        var colon_pos: ?Nat = null;
+        var pos: Nat = 0;
+        label find_colon for (char in address.chars()) {
+            if (char == ':') {
+                colon_pos := ?pos;
+                break find_colon;
+            };
+            pos += 1;
         };
 
-        // Basic length check
-        if (Text.size(address) < 10) {
-            return #err(Errors.invalidAddress("Address too short"));
+        switch (colon_pos) {
+            case (null) {
+                return #err(Errors.invalidAddress("Address must contain ':' separator"));
+            };
+            case (?colon_index) {
+                // Basic length check: prefix + ":" + minimum CashAddr payload (~60 chars)
+                // CashAddr: 1 version byte + 32-33 pubkey bytes = 33-34 bytes
+                // 5-bit encoding: ~53-55 chars + 8 checksum chars = ~61-63 chars minimum
+                if (Text.size(address) < colon_index + 1 + 60) {
+                    return #err(Errors.invalidAddress("Address too short"));
+                };
+            };
         };
 
         #ok(address)
@@ -33,6 +49,14 @@ module {
 
     // Validate amount with optional dust check
     public func validateAmount(amount: Nat64, dust_check: Bool) : Result<Nat64> {
+        if (amount == 0) {
+            return #err(Errors.invalidAmount(
+                "Amount cannot be zero",
+                ?Constants.DUST_THRESHOLD,
+                ?Constants.MAX_AMOUNT
+            ));
+        };
+
         if (dust_check and amount < Constants.DUST_THRESHOLD) {
             return #err(Errors.invalidAmount(
                 "Amount below dust threshold",

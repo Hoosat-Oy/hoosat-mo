@@ -33,6 +33,7 @@ module {
         key_name: Text;
         api_host: Text;
         network: Text; // "mainnet" or "testnet"
+        prefix: Text; // Network prefix (e.g., "kaspa", "hoosat")
         max_fee: Nat64;
         default_fee_rate: Nat64; // sompi per byte
     };
@@ -123,7 +124,7 @@ module {
 
                         let pubkey_bytes = Blob.toArray(pk_result.public_key);
 
-                        switch (Address.generateAddress(pk_result.public_key, address_type)) {
+                        switch (Address.generateAddress(pk_result.public_key, address_type, ?config.prefix)) {
                             case (#err(error)) { #err(error) };
                             case (#ok(addr_info)) {
                                 #ok({
@@ -227,11 +228,11 @@ module {
                 case (#ok(selected_utxos)) {
 
                     // Get recipient and change script public keys
-                    switch (Address.decodeAddress(to_address)) {
+                    switch (Address.decodeAddress(to_address, ?config.prefix)) {
                         case (#err(error)) { return #err(error) };
                         case (#ok(recipient_info)) {
 
-                            switch (Address.decodeAddress(from_address)) {
+                            switch (Address.decodeAddress(from_address, ?config.prefix)) {
                                 case (#err(error)) { return #err(error) };
                                 case (#ok(change_info)) {
 
@@ -368,10 +369,10 @@ module {
             switch (await selectCoinsForTransaction(from_address, amount, transaction_fee)) {
                 case (#err(error)) { return #err(error) };
                 case (#ok(selected_utxos)) {
-                    switch (Address.decodeAddress(to_address)) {
+                    switch (Address.decodeAddress(to_address, ?config.prefix)) {
                         case (#err(error)) { return #err(error) };
                         case (#ok(recipient_info)) {
-                            switch (Address.decodeAddress(from_address)) {
+                            switch (Address.decodeAddress(from_address, ?config.prefix)) {
                                 case (#err(error)) { return #err(error) };
                                 case (#ok(change_info)) {
                                     let total_input = Array.foldLeft<Types.UTXO, Nat64>(
@@ -1029,23 +1030,46 @@ module {
     };
 
     // Factory function for creating production wallet
-    public func createMainnetWallet(key_name: Text) : Wallet {
+    public func createMainnetWallet(key_name: Text, prefix: ?Text) : Wallet {
+        let network_prefix = switch (prefix) {
+            case (null) { "kaspa" };
+            case (?p) { p };
+        };
         let config: WalletConfig = {
             key_name = key_name;
             api_host = "api.kaspa.org";
             network = "mainnet";
+            prefix = network_prefix;
             max_fee = 1_000_000; // 0.01 KAS max fee
             default_fee_rate = 1000; // 1000 sompi per byte
         };
         Wallet(config)
     };
 
-    public func createTestnetWallet(key_name: Text) : Wallet {
+    public func createTestnetWallet(key_name: Text, prefix: ?Text) : Wallet {
+        let network_prefix = switch (prefix) {
+            case (null) { "kaspa" };
+            case (?p) { p };
+        };
         let config: WalletConfig = {
             key_name = key_name;
             api_host = "api-testnet.kaspa.org";
             network = "testnet";
+            prefix = network_prefix;
             max_fee = 10_000_000; // Higher for testnet
+            default_fee_rate = 1000;
+        };
+        Wallet(config)
+    };
+
+    // Factory function for creating custom prefix wallet
+    public func createCustomWallet(key_name: Text, api_host: Text, prefix: Text, network: Text) : Wallet {
+        let config: WalletConfig = {
+            key_name = key_name;
+            api_host = api_host;
+            network = network;
+            prefix = prefix;
+            max_fee = 1_000_000;
             default_fee_rate = 1000;
         };
         Wallet(config)

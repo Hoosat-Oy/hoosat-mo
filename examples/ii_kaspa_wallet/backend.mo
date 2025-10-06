@@ -114,7 +114,7 @@ persistent actor II_KaspaWallet {
 
                 // Create wallet instance with user-specific key derivation
                 let user_key_name = "dfx_test_key"; // In production, could be user-specific
-                let wallet = Wallet.createMainnetWallet(user_key_name);
+                let wallet = Wallet.createMainnetWallet(user_key_name, ?"kaspa");
 
                 let new_session: UserSession = {
                     principal = caller;

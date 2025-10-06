@@ -69,9 +69,8 @@ module {
         c ^ 1
     };
 
-    private func createChecksum(payload : [Nat8]) : [Nat8] {
-        let prefix : [Nat8] = [107, 97, 115, 112, 97]; // "kaspa"
-        let mod : Nat64 = polymod(prefix, payload);
+    private func createChecksum(payload : [Nat8], prefix_bytes : [Nat8]) : [Nat8] {
+        let mod : Nat64 = polymod(prefix_bytes, payload);
         let checksum = Buffer.Buffer<Nat8>(8);
         for (i in Iter.range(0, 7)) {
             let value = Nat8.fromNat(Nat64.toNat((mod >> Nat64.fromNat(5 * (7 - i))) & 0x1f));
@@ -116,7 +115,7 @@ module {
         #ok(Buffer.toArray<Nat8>(out))
     };
 
-    private func cashaddrEncode(payload_bytes : [Nat8], version : Nat) : Result<Text> {
+    private func cashaddrEncode(payload_bytes : [Nat8], version : Nat, prefix_bytes : [Nat8]) : Result<Text> {
         let version_byte : Nat8 = switch (version) {
             case (0) 0; // SCHNORR
             case (1) 1; // ECDSA
@@ -134,7 +133,7 @@ module {
         switch (convertBits(data_array, 8, 5, true)) {
             case (#err(error)) { #err(error) };
             case (#ok(converted)) {
-                let checksum = createChecksum(converted);
+                let checksum = createChecksum(converted, prefix_bytes);
                 let combined = Array.append(converted, checksum);
                 let result = Buffer.Buffer<Char>(combined.size());
 
@@ -185,18 +184,23 @@ module {
         #ok(pubkey_bytes)
     };
 
-    // Generate Kaspa address from public key with comprehensive validation
-    public func generateAddress(pubkey : Blob, addr_type : Nat) : Result<AddressInfo> {
+    // Generate address from public key with comprehensive validation
+    public func generateAddress(pubkey : Blob, addr_type : Nat, prefix : ?Text) : Result<AddressInfo> {
         // Validate public key
         switch (validatePublicKey(pubkey, addr_type)) {
             case (#err(error)) { return #err(error) };
             case (#ok(pubkey_bytes)) {
 
                 // Generate address
-                switch (cashaddrEncode(pubkey_bytes, addr_type)) {
+                let network_prefix = switch (prefix) {
+                    case (null) { "kaspa" };
+                    case (?p) { p };
+                };
+                let prefix_bytes = Text.encodeUtf8(network_prefix) |> Blob.toArray(_);
+                switch (cashaddrEncode(pubkey_bytes, addr_type, prefix_bytes)) {
                     case (#err(error)) { return #err(error) };
                     case (#ok(encoded)) {
-                        let address = "kaspa:" # encoded;
+                        let address = network_prefix # ":" # encoded;
 
                         // Generate script public key
                         switch (generateScriptPublicKey(pubkey_bytes, addr_type)) {
@@ -216,21 +220,27 @@ module {
         };
     };
 
-    // Decode Kaspa address with comprehensive validation
-    public func decodeAddress(address: Text) : Result<AddressInfo> {
+    // Decode address with comprehensive validation
+    public func decodeAddress(address: Text, prefix : ?Text) : Result<AddressInfo> {
         // Basic validation
         if (Text.size(address) == 0) {
             return #err(Errors.invalidAddress("Address cannot be empty"));
         };
 
-        if (not Text.startsWith(address, #text("kaspa:"))) {
-            return #err(Errors.invalidAddress("Address must start with 'kaspa:' prefix"));
+        let network_prefix = switch (prefix) {
+            case (null) { "kaspa" };
+            case (?p) { p };
+        };
+        let expected_prefix = network_prefix # ":";
+
+        if (not Text.startsWith(address, #text(expected_prefix))) {
+            return #err(Errors.invalidAddress("Address must start with '" # expected_prefix # "' prefix"));
         };
 
         // Core address decoding logic (avoiding circular dependency)
-        let stripped = switch (Text.stripStart(address, #text("kaspa:"))) {
+        let stripped = switch (Text.stripStart(address, #text(expected_prefix))) {
             case (null) {
-                return #err(Errors.invalidAddress("Failed to strip 'kaspa:' prefix"));
+                return #err(Errors.invalidAddress("Failed to strip '" # expected_prefix # "' prefix"));
             };
             case (?addr) { addr };
         };
@@ -265,8 +275,8 @@ module {
         let checksum = Array.tabulate<Nat8>(8, func(i) = data_array[payload_len + i]);
 
         // Verify checksum
-        let prefix : [Nat8] = [107, 97, 115, 112, 97]; // "kaspa"
-        let calculated_checksum_mod = polymod(prefix, payload_5bit);
+        let prefix_bytes = Text.encodeUtf8(network_prefix) |> Blob.toArray(_);
+        let calculated_checksum_mod = polymod(prefix_bytes, payload_5bit);
         let expected_checksum = Buffer.Buffer<Nat8>(8);
         for (i in Iter.range(0, 7)) {
             let value = Nat8.fromNat(Nat64.toNat((calculated_checksum_mod >> Nat64.fromNat(5 * (7 - i))) & 0x1f));
@@ -445,14 +455,14 @@ module {
 
     // Backward compatibility functions (deprecated)
     public func address_from_pubkey(pubkey : Blob, addr_type : Nat) : Text {
-        switch (generateAddress(pubkey, addr_type)) {
+        switch (generateAddress(pubkey, addr_type, null)) {
             case (#ok(info)) { info.address };
             case (#err(_)) { "" };
         };
     };
 
     public func decode_address(address: Text) : ?(Nat, [Nat8]) {
-        switch (decodeAddress(address)) {
+        switch (decodeAddress(address, null)) {
             case (#ok(info)) { ?(info.addr_type, info.payload) };
             case (#err(_)) { null };
         };

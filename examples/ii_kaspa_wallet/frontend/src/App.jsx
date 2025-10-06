@@ -2,7 +2,7 @@ import { AuthClient } from '@dfinity/auth-client';
 import { Actor, HttpAgent } from '@dfinity/agent';
 import React, { useState, useEffect } from 'react';
 
-const canisterId = 'umunu-kh777-77774-qaaca-cai';
+const canisterId = 'uxrrr-q7777-77774-qaaaq-cai';//'umunu-kh777-77774-qaaca-cai';
 const network = process.env.DFX_NETWORK || 'local';
 const identityProvider = network === 'ic'
   ? 'https://identity.ic0.app'

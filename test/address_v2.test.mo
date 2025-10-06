@@ -56,6 +56,13 @@ persistent actor {
     public func runTests() : async Text {
         Debug.print("🧪 Running AddressV2 Tests...");
 
+        // Run all test functions
+        test_hex_utilities();
+        test_script_generation();
+        test_address_operations();
+        test_custom_prefixes();
+        test_backward_compatibility();
+
         var passed : Nat = 0;
         var total : Nat = 0;
 
@@ -286,7 +293,7 @@ persistent actor {
         let pubkey_blob = Blob.fromArray(Array.freeze(valid_ecdsa_pubkey));
 
         // Test address generation
-        switch (Address.generateAddress(pubkey_blob, Address.ECDSA)) {
+        switch (Address.generateAddress(pubkey_blob, Address.ECDSA, null)) {
             case (#ok(addr_info)) {
                 Debug.print("Generated address: " # addr_info.address);
 
@@ -301,7 +308,7 @@ persistent actor {
                 );
 
                 // Test address decoding
-                switch (Address.decodeAddress(addr_info.address)) {
+                switch (Address.decodeAddress(addr_info.address, null)) {
                     case (#ok(decoded_info)) {
                         ignore assertEqual(
                             decoded_info.addr_type,
@@ -337,10 +344,106 @@ persistent actor {
         // Test invalid public key
         let invalid_pubkey = Blob.fromArray([0x00]); // Wrong length
         ignore assertResult(
-            Address.generateAddress(invalid_pubkey, Address.ECDSA),
+            Address.generateAddress(invalid_pubkey, Address.ECDSA, null),
             false,
             "Invalid public key should fail"
         );
+    };
+
+    private func test_custom_prefixes() {
+        Debug.print("\n🌐 Testing Custom Prefixes");
+
+        // Test with a valid ECDSA public key
+        let valid_ecdsa_pubkey = Array.thaw<Nat8>([
+            0x02, 0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62, 0x95, 0xce, 0x87, 0x0b,
+            0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98
+        ]);
+        let pubkey_blob = Blob.fromArray(Array.freeze(valid_ecdsa_pubkey));
+
+        // Test hoosat prefix
+        switch (Address.generateAddress(pubkey_blob, Address.ECDSA, ?"hoosat")) {
+            case (#ok(addr_info)) {
+                Debug.print("Generated hoosat address: " # addr_info.address);
+
+                // Verify address starts with hoosat:
+                let has_prefix = Text.startsWith(addr_info.address, #text("hoosat:"));
+                ignore assertEqual(
+                    has_prefix,
+                    true,
+                    "Generated address should have hoosat: prefix",
+                    func(a, b) { a == b },
+                    func(b) { if (b) "true" else "false" }
+                );
+
+                // Test hoosat address decoding
+                switch (Address.decodeAddress(addr_info.address, ?"hoosat")) {
+                    case (#ok(decoded_info)) {
+                        ignore assertEqual(
+                            decoded_info.addr_type,
+                            Address.ECDSA,
+                            "Decoded hoosat address type should match",
+                            func(a, b) { a == b },
+                            func(n) { debug_show(n) }
+                        );
+
+                        let payload_matches = Array.equal(
+                            decoded_info.payload,
+                            addr_info.payload,
+                            func(a, b) { a == b }
+                        );
+                        ignore assertEqual(
+                            payload_matches,
+                            true,
+                            "Decoded hoosat payload should match original",
+                            func(a, b) { a == b },
+                            func(b) { if (b) "true" else "false" }
+                        );
+                    };
+                    case (#err(error)) {
+                        Debug.print("❌ FAIL: Hoosat address decoding failed: " # Errors.errorToText(error));
+                    };
+                };
+
+                // Test that kaspa decoder fails on hoosat address
+                ignore assertResult(
+                    Address.decodeAddress(addr_info.address, null),
+                    false,
+                    "Kaspa decoder should reject hoosat address"
+                );
+            };
+            case (#err(error)) {
+                Debug.print("❌ FAIL: Hoosat address generation failed: " # Errors.errorToText(error));
+            };
+        };
+
+        // Test short prefix
+        switch (Address.generateAddress(pubkey_blob, Address.ECDSA, ?"abc")) {
+            case (#ok(addr_info)) {
+                Debug.print("Generated abc address: " # addr_info.address);
+
+                let has_prefix = Text.startsWith(addr_info.address, #text("abc:"));
+                ignore assertEqual(
+                    has_prefix,
+                    true,
+                    "Generated address should have abc: prefix",
+                    func(a, b) { a == b },
+                    func(b) { if (b) "true" else "false" }
+                );
+
+                // Test abc address decoding
+                switch (Address.decodeAddress(addr_info.address, ?"abc")) {
+                    case (#ok(_)) {
+                        Debug.print("✅ PASS: ABC address decoding succeeded");
+                    };
+                    case (#err(error)) {
+                        Debug.print("❌ FAIL: ABC address decoding failed: " # Errors.errorToText(error));
+                    };
+                };
+            };
+            case (#err(error)) {
+                Debug.print("❌ FAIL: ABC address generation failed: " # Errors.errorToText(error));
+            };
+        };
     };
 
     private func test_backward_compatibility() {

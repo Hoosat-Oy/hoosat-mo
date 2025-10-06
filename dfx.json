@@ -11,6 +11,12 @@
       "init_cycles": 2000000000000
     },
 
+    "hoosat_test_tecdsa": {
+      "type": "motoko",
+      "main": "examples/hoosat_test_tecdsa/main.mo",
+      "init_cycles": 2000000000000
+    },
+
     "wallet_broadcast_example": {
       "type": "motoko",
       "main": "examples/wallet_broadcast_example.mo",
