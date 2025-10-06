@@ -124,10 +124,10 @@ This repository includes comprehensive examples demonstrating different use case
 Import the `Hoosat-mo` modules in your Motoko code:
 
 ```motoko
-import Address "mo:Hoosat/address";
-import Wallet "mo:Hoosat/wallet";
-import Errors "mo:Hoosat/errors";
-import Validation "mo:Hoosat/validation";
+import Address "mo:Hoosat-mo/address";
+import Wallet "mo:Hoosat-mo/wallet";
+import Errors "mo:Hoosat-mo/errors";
+import Validation "mo:Hoosat-mo/validation";
 ```
 
 ### Example: Generating a Hoosat Address
@@ -135,7 +135,7 @@ import Validation "mo:Hoosat/validation";
 Generate a Hoosat address from a public key (Schnorr or ECDSA):
 
 ```motoko
-import Address "mo:Hoosat/address";
+import Address "mo:Hoosat-mo/address";
 import Result "mo:base/Result";
 import Blob "mo:base/Blob";
 
