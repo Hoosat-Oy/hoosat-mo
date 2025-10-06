@@ -1,11 +1,12 @@
-# Kaspa Motoko Package and Canister
+# Hoosat Motoko Package and Canister
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/kaspa)](https://mops.one/kaspa)
+[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/Hoosat)](https://mops.one/Hoosat)
 
-Welcome to the `kaspa` project, which provides a Motoko package (`kaspa-mo`) and a canister implementation for interacting with the Kaspa blockchain on the Internet Computer (IC). The `kaspa-mo` package includes modules for generating and decoding Kaspa addresses, calculating signature hashes, building and serializing transactions, and defining common blockchain data structures. The `kaspa_test_tecdsa.mo` canister demonstrates how to use the package to fetch UTXOs, generate addresses, and sign ECDSA-based transactions.
+Welcome to the `hoosat-mo` project, which provides a Motoko package (`hoosat-mo`) and a canister implementation for interacting with the Hoosat blockchain on the Internet Computer (IC). The `Hoosat-mo` package includes modules for generating and decoding Hoosat addresses, calculating signature hashes, building and serializing transactions, and defining common blockchain data structures. The `hoosat_ecdsa.mo` canister demonstrates how to use the package to fetch UTXOs, generate addresses, and sign ECDSA-based transactions.
 
 ## Table of Contents
+
 - [Installation](#installation)
   - [For Library Usage (Mops)](#for-library-usage-mops)
   - [For Canister Development (DFX)](#for-canister-development-dfx)
@@ -13,10 +14,10 @@ Welcome to the `kaspa` project, which provides a Motoko package (`kaspa-mo`) and
 - [Running the Canister Locally](#running-the-canister-locally)
   - [Note on Frontend Environment Variables](#note-on-frontend-environment-variables)
 - [Examples](#examples)
-  - [Internet Identity + Kaspa Wallet](#internet-identity--kaspa-wallet)
+  - [Internet Identity + Hoosat Wallet](#internet-identity--Hoosat-wallet)
   - [Basic Wallet Broadcasting](#basic-wallet-broadcasting)
 - [Usage](#usage)
-  - [Example: Generating a Kaspa Address](#example-generating-a-kaspa-address)
+  - [Example: Generating a Hoosat Address](#example-generating-a-Hoosat-address)
   - [Example: Calculating a Schnorr Sighash](#example-calculating-a-schnorr-sighash)
   - [Example: Building a Transaction](#example-building-a-transaction)
 - [Example Canister](#example-canister)
@@ -35,16 +36,19 @@ Welcome to the `kaspa` project, which provides a Motoko package (`kaspa-mo`) and
 ## Installation
 
 ### For Library Usage (Mops)
-To use the `kaspa-mo` package in your Motoko project:
+
+To use the `Hoosat-mo` package in your Motoko project:
 
 1. **Install Mops** (if not already installed):
+
    ```bash
    npm i -g ic-mops
    ```
 
-2. **Add the Kaspa package** to your project:
+2. **Add the Hoosat package** to your project:
+
    ```bash
-   mops add kaspa
+   mops add Hoosat
    ```
 
 3. **For DFX projects**:
@@ -54,15 +58,17 @@ To use the `kaspa-mo` package in your Motoko project:
    ```
 
 ### For Canister Development (DFX)
-To work with the `kaspa` canister project locally:
+
+To work with the `Hoosat` canister project locally:
 
 1. **Install DFX** (if not already installed):
    Follow the [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install) guide.
 
 2. **Clone the repository**:
+
    ```bash
-   git clone https://github.com/codecustard/kaspa
-   cd kaspa
+   git clone https://github.com/codecustard/Hoosat
+   cd Hoosat
    ```
 
 3. **Install dependencies**:
@@ -72,32 +78,37 @@ To work with the `kaspa` canister project locally:
 
 ## Dependencies
 
-The `kaspa-mo` package and `kaspa` canister depend on:
+The `Hoosat-mo` package and `Hoosat` canister depend on:
+
 - `mo:blake2b`: For Blake2b-256 hashing in `sighash.mo`.
 - `mo:sha2`: For SHA-256 hashing in `sighash.mo`.
-- `mo:json`: For parsing JSON responses in `kaspa_test_tecdsa.mo`.
+- `mo:json`: For parsing JSON responses in `hoosat_ecdsa.mo`.
 
-This package can be added via [mops.one](https://mops.one/kaspa):
+This package can be added via [mops.one](https://mops.one/Hoosat):
+
 ```bash
-mops add kaspa
+mops add Hoosat
 ```
 
 The canister also uses the IC management canister (`ic:aaaaa-aa`) for ECDSA operations, requiring sufficient cycles and permissions.
 
 ## Running the Canister Locally
 
-To test the `kaspa` canister locally:
+To test the `Hoosat` canister locally:
 
 1. **Start the replica**:
+
    ```bash
    dfx start --background
    ```
 
 2. **Deploy the canister**:
+
    ```bash
    dfx deploy
    ```
-   This deploys the `kaspa_test_tecdsa.mo` canister and generates its Candid interface. The canister will be available at `http://localhost:4943?canisterId=<asset_canister_id>`.
+
+   This deploys the `hoosat_ecdsa.mo` canister and generates its Candid interface. The canister will be available at `http://localhost:4943?canisterId=<asset_canister_id>`.
 
 3. **Generate the Candid interface** (if backend changes are made):
    ```bash
@@ -106,61 +117,25 @@ To test the `kaspa` canister locally:
 
 ## Examples
 
-This repository includes several comprehensive examples demonstrating different use cases for the Kaspa Motoko package:
-
-### Internet Identity + Kaspa Wallet
-
-🌟 **Featured Example**: A Kaspa wallet with Internet Identity authentication.
-
-**Location**: [`examples/ii_kaspa_wallet/`](examples/ii_kaspa_wallet/)
-
-**Features**:
-- 🔐 Internet Identity passwordless authentication
-- 🎨 Modern React frontend with shadcn-inspired dark theme
-- 💸 Complete send/receive functionality
-- 🔒 Secure SHA256-based derivation paths
-- 👤 Per-user wallet sessions with timeout management
-- ⚡ Real-time balance checking and transaction status
-
-**Quick Start**:
-```bash
-cd examples/ii_kaspa_wallet
-npm install
-dfx start --background
-dfx deps deploy internet_identity
-dfx deploy
-```
-
-**[📖 Full Documentation](examples/ii_kaspa_wallet/README.md)**
-
-### Basic Wallet Broadcasting
-
-**Location**: [`examples/wallet_broadcast_example.mo`](examples/wallet_broadcast_example.mo)
-
-A simple example demonstrating the core wallet functionality:
-- Address generation
-- Transaction building and signing
-- Broadcasting to Kaspa network
-- Basic error handling
-
-Perfect for understanding the fundamental concepts before building more complex applications.
+This repository includes comprehensive examples demonstrating different use cases for the Hoosat Motoko package:
 
 ## Usage
 
-Import the `kaspa-mo` modules in your Motoko code:
+Import the `Hoosat-mo` modules in your Motoko code:
 
 ```motoko
-import Address "mo:kaspa/address";
-import Wallet "mo:kaspa/wallet";
-import Errors "mo:kaspa/errors";
-import Validation "mo:kaspa/validation";
+import Address "mo:Hoosat/address";
+import Wallet "mo:Hoosat/wallet";
+import Errors "mo:Hoosat/errors";
+import Validation "mo:Hoosat/validation";
 ```
 
-### Example: Generating a Kaspa Address
-Generate a Kaspa address from a public key (Schnorr or ECDSA):
+### Example: Generating a Hoosat Address
+
+Generate a Hoosat address from a public key (Schnorr or ECDSA):
 
 ```motoko
-import Address "mo:kaspa/address";
+import Address "mo:Hoosat/address";
 import Result "mo:base/Result";
 import Blob "mo:base/Blob";
 
@@ -180,18 +155,20 @@ actor {
 ```
 
 Example call:
-- Schnorr (32-byte pubkey): `generateAddress("a1b2c3d4e5f6...64chars", Address.SCHNORR)` → `kaspa:qypq...`
-- ECDSA (33-byte pubkey): `generateAddress("02a1b2c3d4e5...66chars", Address.ECDSA)` → `kaspa:qypq...`
+
+- Schnorr (32-byte pubkey): `generateAddress("a1b2c3d4e5f6...64chars", Address.SCHNORR)` → `Hoosat:qypq...`
+- ECDSA (33-byte pubkey): `generateAddress("02a1b2c3d4e5...66chars", Address.ECDSA)` → `Hoosat:qypq...`
 
 ### Example: Calculating a Schnorr Sighash
-Calculate a signature hash for a Kaspa transaction input:
+
+Calculate a signature hash for a Hoosat transaction input:
 
 ```motoko
-import Sighash "mo:codecustard/kaspa/src/sighash";
-import Types "mo:codecustard/kaspa/src/types";
+import Sighash "mo:codecustard/Hoosat/src/sighash";
+import Types "mo:codecustard/Hoosat/src/types";
 
 actor {
-  public func calculateSighash(tx : Types.KaspaTransaction, inputIndex : Nat, utxo : Types.UTXO) : async ?Text {
+  public func calculateSighash(tx : Types.HoosatTransaction, inputIndex : Nat, utxo : Types.UTXO) : async ?Text {
     let reusedValues : Sighash.SighashReusedValues = {
       var previousOutputsHash = null;
       var sequencesHash = null;
@@ -208,11 +185,12 @@ actor {
 ```
 
 ### Example: Building a Transaction
-Build a Kaspa transaction with one input and one or two outputs:
+
+Build a Hoosat transaction with one input and one or two outputs:
 
 ```motoko
-import Transaction "mo:codecustard/kaspa/src/transaction";
-import Types "mo:codecustard/kaspa/src/types";
+import Transaction "mo:codecustard/Hoosat/src/transaction";
+import Types "mo:codecustard/Hoosat/src/types";
 
 actor {
   public func createTransaction(
@@ -229,6 +207,7 @@ actor {
 ```
 
 Example call:
+
 ```motoko
 let utxo : Types.UTXO = {
   transactionId = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6";
@@ -236,7 +215,7 @@ let utxo : Types.UTXO = {
   amount = 2000000;
   scriptVersion = 0;
   scriptPublicKey = "20a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3ac";
-  address = "kaspa:qypq...";
+  address = "Hoosat:qypq...";
 };
 let json = await createTransaction(utxo, "20d4e5f6a1b2c3...ac", 1000000, 1000, "20a1b2c3d4e5f6...ac");
 // Returns JSON: "{\"transaction\":{\"version\":0,\"inputs\":[...],\"outputs\":[...],...}}"
@@ -244,26 +223,28 @@ let json = await createTransaction(utxo, "20d4e5f6a1b2c3...ac", 1000000, 1000, "
 
 ## Example Canister
 
-The `kaspa_test_tecdsa.mo` canister demonstrates how to use the `kaspa-mo` package to interact with the Kaspa blockchain. It fetches UTXOs from the Kaspa mainnet, generates ECDSA-based addresses, builds transactions, and signs them using the Internet Computer’s management canister (`aaaaa-aa`) for ECDSA operations. The canister is configured for ECDSA transactions and uses the `dfx_test_key` for signing.
+The `hoosat_ecdsa.mo` canister demonstrates how to use the `Hoosat-mo` package to interact with the Hoosat blockchain. It fetches UTXOs from the Hoosat mainnet, generates ECDSA-based addresses, builds transactions, and signs them using the Internet Computer’s management canister (`aaaaa-aa`) for ECDSA operations. The canister is configured for ECDSA transactions and uses the `dfx_test_key` for signing.
 
 ### Key Functions
-- `get_kaspa_address(derivation_path : ?Text) : async Text`
-  - Retrieves an ECDSA public key from the IC management canister and converts it to a Kaspa address.
+
+- `get_hoosat_address(derivation_path : ?Text) : async Text`
+
+  - Retrieves an ECDSA public key from the IC management canister and converts it to a Hoosat address.
   - Supports optional derivation paths (e.g., `"44'/111111'/0'/0/0"`).
   - Example:
     ```motoko
-    let addr = await get_kaspa_address(?"44'/111111'/0'/0/0");
-    // Returns: "kaspa:qypq..."
+    let addr = await get_hoosat_address(?"44'/111111'/0'/0/0");
+    // Returns: "Hoosat:qypq..."
     ```
 
-- `send_kas(recipient_address : Text, amount : Nat64) : async ?Text`
+- `send_hoosat(recipient_address : Text, amount : Nat64) : async ?Text`
   - Builds, signs, and serializes a transaction to send `amount` sompi to `recipient_address`.
-  - Fetches UTXOs from the Kaspa mainnet, selects one with sufficient funds, and creates a transaction with a recipient output and optional change output.
+  - Fetches UTXOs from the Hoosat mainnet, selects one with sufficient funds, and creates a transaction with a recipient output and optional change output.
   - Signs the transaction using ECDSA with `SigHashAll`.
   - Returns the serialized transaction JSON or `null` on failure (e.g., invalid address, insufficient funds).
   - Example:
     ```motoko
-    let result = await send_kas("kaspa:qypq...", 1000000);
+    let result = await send_hoosat("Hoosat:qypq...", 1000000);
     switch (result) {
       case (?json) { /* JSON-serialized transaction */ };
       case (null) { /* Failed to create transaction */ };
@@ -271,20 +252,24 @@ The `kaspa_test_tecdsa.mo` canister demonstrates how to use the `kaspa-mo` packa
     ```
 
 ### Dependencies
-- Requires `mo:json` for parsing UTXO responses from the Kaspa API.
+
+- Requires `mo:json` for parsing UTXO responses from the Hoosat API.
 - Uses the IC management canister (`ic:aaaaa-aa`) for ECDSA public key retrieval and signing.
 
 ### Notes
+
 - The canister requires access to the `dfx_test_key` for ECDSA operations. Ensure the canister has sufficient cycles (e.g., 30B for signing, 230B for HTTP requests) and permissions for `aaaaa-aa`.
-- The `submit_transaction` function is a placeholder (commented out). To submit transactions, implement an HTTP request to the Kaspa API (e.g., `https://api.kaspa.org/transactions`).
-- The canister fetches UTXOs from `api.kaspa.org`. Handle potential API rate limits or errors (e.g., via retry logic).
+- The `submit_transaction` function is a placeholder (commented out). To submit transactions, implement an HTTP request to the Hoosat API (e.g., `https://api.Hoosat.org/transactions`).
+- The canister fetches UTXOs from `api.Hoosat.org`. Handle potential API rate limits or errors (e.g., via retry logic).
 
 ## Modules
 
 ### `address.mo`
-Provides functions for encoding and decoding Kaspa addresses using the CashAddr format, converting public keys to script public keys, and handling hex conversions.
+
+Provides functions for encoding and decoding Hoosat addresses using the CashAddr format, converting public keys to script public keys, and handling hex conversions.
 
 #### Constants
+
 - `SCHNORR : Nat = 0`: Represents Schnorr-based addresses (32-byte payload).
 - `ECDSA : Nat = 1`: Represents ECDSA-based addresses (33-byte payload).
 - `P2SH : Nat = 2`: Represents Pay-to-Script-Hash addresses (32-byte payload).
@@ -292,17 +277,20 @@ Provides functions for encoding and decoding Kaspa addresses using the CashAddr 
 - `ECDSA_PAYLOAD_LEN : Nat = 33`: Expected length for ECDSA payloads.
 
 #### Public Functions
+
 - `address_from_pubkey(pubkey : Blob, addr_type : Nat) : Text`
-  - Generates a Kaspa address (`kaspa:...`) from a public key blob for the specified address type (`SCHNORR`, `ECDSA`, or `P2SH`).
+
+  - Generates a Hoosat address (`Hoosat:...`) from a public key blob for the specified address type (`SCHNORR`, `ECDSA`, or `P2SH`).
   - Returns an empty string if the public key length is invalid or encoding fails.
   - Example:
     ```motoko
     let pubkey = Blob.fromArray([0xa1, 0xb2, ...]); // 32 or 33 bytes
     let address = Address.address_from_pubkey(pubkey, Address.SCHNORR);
-    // Returns: "kaspa:qypq..."
+    // Returns: "Hoosat:qypq..."
     ```
 
 - `pubkey_to_script(pubkey : [Nat8], addr_type : Nat) : Text`
+
   - Converts a public key to a hex-encoded script public key (e.g., for P2PK Schnorr or ECDSA).
   - Schnorr: `OP_DATA_32 <pubkey> OP_CHECKSIG`.
   - ECDSA: `OP_DATA_33 <pubkey> OP_CHECKSIG`.
@@ -315,12 +303,13 @@ Provides functions for encoding and decoding Kaspa addresses using the CashAddr 
     ```
 
 - `decode_address(address : Text) : ?(Nat, [Nat8])`
-  - Decodes a Kaspa address (`kaspa:...`) into its address type (`SCHNORR`, `ECDSA`, or `P2SH`) and payload bytes.
+
+  - Decodes a Hoosat address (`Hoosat:...`) into its address type (`SCHNORR`, `ECDSA`, or `P2SH`) and payload bytes.
   - Validates the address prefix, charset, checksum, and payload length.
   - Returns `null` if the address is invalid.
   - Example:
     ```motoko
-    switch (Address.decode_address("kaspa:qypq...")) {
+    switch (Address.decode_address("Hoosat:qypq...")) {
       case (? (addrType, payload)) {
         // addrType: 0 (SCHNORR), payload: [Nat8] of length 32
       };
@@ -329,6 +318,7 @@ Provides functions for encoding and decoding Kaspa addresses using the CashAddr 
     ```
 
 - `hex_from_array(bytes : [Nat8]) : Text`
+
   - Converts a byte array to a lowercase hex string.
   - Example: `[0xa1, 0xb2]` → `"a1b2"`.
 
@@ -338,9 +328,11 @@ Provides functions for encoding and decoding Kaspa addresses using the CashAddr 
   - Example: `"a1b2"` → `[0xa1, 0xb2]`.
 
 ### `sighash.mo`
-Provides functions for calculating signature hashes (sighash) for Kaspa transactions, supporting both Schnorr and ECDSA signatures. It includes utilities for handling transaction data and optimizing hash calculations with reused values.
+
+Provides functions for calculating signature hashes (sighash) for Hoosat transactions, supporting both Schnorr and ECDSA signatures. It includes utilities for handling transaction data and optimizing hash calculations with reused values.
 
 #### Types
+
 - `SigHashType : Nat8`: Represents the sighash type for transaction signing.
 - `SighashReusedValues`: A record to cache precomputed hashes for efficiency:
   ```motoko
@@ -354,6 +346,7 @@ Provides functions for calculating signature hashes (sighash) for Kaspa transact
   ```
 
 #### Constants
+
 - `SigHashAll : Nat8 = 0x01`: Signs all inputs and outputs.
 - `SigHashNone : Nat8 = 0x02`: Signs all inputs, no outputs.
 - `SigHashSingle : Nat8 = 0x04`: Signs all inputs and one output.
@@ -364,14 +357,17 @@ Provides functions for calculating signature hashes (sighash) for Kaspa transact
 - `SigHashMask : Nat8 = 0x07`: Mask for extracting the base sighash type.
 
 #### Public Functions
+
 - `is_standard_sighash_type(hashType : SigHashType) : Bool`
+
   - Checks if the provided sighash type is standard (e.g., `SigHashAll`, `SigHashNone`).
   - Example:
     ```motoko
     let isValid = Sighash.is_standard_sighash_type(Sighash.SigHashAll); // true
     ```
 
-- `calculate_sighash_schnorr(tx : Types.KaspaTransaction, input_index : Nat, utxo : Types.UTXO, hashType : SigHashType, reusedValues : SighashReusedValues) : ?[Nat8]`
+- `calculate_sighash_schnorr(tx : Types.HoosatTransaction, input_index : Nat, utxo : Types.UTXO, hashType : SigHashType, reusedValues : SighashReusedValues) : ?[Nat8]`
+
   - Calculates the Schnorr sighash for a transaction input, using Blake2b-256 with a domain separator.
   - Returns `null` if the sighash type is invalid or input index is out of bounds.
   - Example:
@@ -383,7 +379,8 @@ Provides functions for calculating signature hashes (sighash) for Kaspa transact
     };
     ```
 
-- `calculate_sighash_ecdsa(tx : Types.KaspaTransaction, input_index : Nat, utxo : Types.UTXO, hashType : SigHashType, reusedValues : SighashReusedValues) : ?[Nat8]`
+- `calculate_sighash_ecdsa(tx : Types.HoosatTransaction, input_index : Nat, utxo : Types.UTXO, hashType : SigHashType, reusedValues : SighashReusedValues) : ?[Nat8]`
+
   - Calculates the ECDSA sighash by hashing the Schnorr sighash with SHA-256 and an ECDSA domain separator.
   - Returns `null` if the Schnorr sighash calculation fails.
   - Example:
@@ -396,23 +393,28 @@ Provides functions for calculating signature hashes (sighash) for Kaspa transact
     ```
 
 - `hex_from_array(bytes : [Nat8]) : Text`
+
   - Converts a byte array to a lowercase hex string.
   - Example: `[0xa1, 0xb2]` → `"a1b2"`.
 
 - `array_from_hex(hex : Text) : [Nat8]`
+
   - Converts a hex string (lowercase or uppercase) to a byte array.
   - Returns an empty array if the hex string is invalid.
   - Example: `"a1b2"` → `[0xa1, 0xb2]`.
 
 - `nat16_to_bytes(n : Nat16) : [Nat8]`, `nat32_to_bytes(n : Nat32) : [Nat8]`, `nat64_to_le_bytes(n : Nat64) : [Nat8]`
+
   - Converts numbers to little-endian byte arrays for serialization.
   - Example: `nat32_to_bytes(256)` → `[0x00, 0x01, 0x00, 0x00]`.
 
 - `transaction_signing_ecdsa_domain_hash() : [Nat8]`
+
   - Returns the SHA-256 hash of the ECDSA domain separator (`"TransactionSigningHashECDSA"`).
   - Example: Returns a 32-byte array.
 
 - `blake2b_256(data : [Nat8], key : ?Text) : [Nat8]`
+
   - Computes a Blake2b-256 hash of the input data, optionally with a key.
   - Example: `blake2b_256([0xa1, 0xb2], ?"TransactionSigningHash")` → 32-byte hash.
 
@@ -421,10 +423,13 @@ Provides functions for calculating signature hashes (sighash) for Kaspa transact
   - Example: Returns `[0, 0, ..., 0]`.
 
 ### `transaction.mo`
-Provides functions for building and serializing Kaspa transactions, including utilities for signature encoding and hex conversions. It supports creating transactions with one input and one or two outputs (recipient and optional change).
+
+Provides functions for building and serializing Hoosat transactions, including utilities for signature encoding and hex conversions. It supports creating transactions with one input and one or two outputs (recipient and optional change).
 
 #### Public Functions
-- `build_transaction(utxo : Types.UTXO, recipient_script : Text, output_amount : Nat64, fee : Nat64, change_script : Text) : Types.KaspaTransaction`
+
+- `build_transaction(utxo : Types.UTXO, recipient_script : Text, output_amount : Nat64, fee : Nat64, change_script : Text) : Types.HoosatTransaction`
+
   - Builds a transaction with one input (from a UTXO) and one or two outputs (recipient and optional change if the remaining amount is above the dust threshold of 1000 sompi).
   - Returns an empty transaction if the UTXO amount is insufficient.
   - Example:
@@ -435,14 +440,15 @@ Provides functions for building and serializing Kaspa transactions, including ut
       amount = 2000000;
       scriptVersion = 0;
       scriptPublicKey = "20a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3ac";
-      address = "kaspa:qypq...";
+      address = "Hoosat:qypq...";
     };
     let tx = Transaction.build_transaction(utxo, "20d4e5f6a1b2c3...ac", 1000000, 1000, "20a1b2c3d4e5f6...ac");
     // Returns a transaction with one input and two outputs (recipient + change)
     ```
 
-- `serialize_transaction(tx : Types.KaspaTransaction) : Text`
-  - Serializes a transaction to JSON format compatible with the Kaspa REST API.
+- `serialize_transaction(tx : Types.HoosatTransaction) : Text`
+
+  - Serializes a transaction to JSON format compatible with the Hoosat REST API.
   - Example:
     ```motoko
     let json = Transaction.serialize_transaction(tx);
@@ -450,6 +456,7 @@ Provides functions for building and serializing Kaspa transactions, including ut
     ```
 
 - `sign_schnorr(sighash : [Nat8], private_key : [Nat8]) : [Nat8]`
+
   - Placeholder for Schnorr signing (currently returns a dummy 64-byte signature).
   - Expects a 32-byte sighash and 32-byte private key.
   - TODO: Implement actual Schnorr signing with a secp256k1 library or external canister.
@@ -461,6 +468,7 @@ Provides functions for building and serializing Kaspa transactions, including ut
     ```
 
 - `signature_to_hex(sig : [Nat8]) : Text`
+
   - Converts a signature (e.g., DER-encoded) to a lowercase hex string.
   - Example: `[0xa1, 0xb2]` → `"a1b2"`.
 
@@ -470,19 +478,24 @@ Provides functions for building and serializing Kaspa transactions, including ut
   - Example: `"a1b2"` → `[0xa1, 0xb2]`.
 
 ### `types.mo`
-Defines data structures for Kaspa transactions and UTXOs, used across the other modules for address handling, sighash calculation, and transaction building.
+
+Defines data structures for Hoosat transactions and UTXOs, used across the other modules for address handling, sighash calculation, and transaction building.
 
 #### Public Types
+
 - `Outpoint`:
+
   ```motoko
   {
     transactionId: Text; // Hex-encoded transaction ID (64 chars)
     index: Nat32;       // Output index in the transaction
   }
   ```
+
   - Represents a transaction outpoint (reference to a previous output).
 
 - `TransactionInput`:
+
   ```motoko
   {
     previousOutpoint: Outpoint; // Reference to the UTXO being spent
@@ -491,27 +504,33 @@ Defines data structures for Kaspa transactions and UTXOs, used across the other 
     sigOpCount: Nat8;          // Number of signature operations
   }
   ```
-  - Represents an input in a Kaspa transaction.
+
+  - Represents an input in a Hoosat transaction.
 
 - `ScriptPublicKey`:
+
   ```motoko
   {
     version: Nat16;          // Script version (e.g., 0)
     scriptPublicKey: Text;   // Hex-encoded script public key (e.g., "20<32-byte-pubkey>ac")
   }
   ```
+
   - Represents a script public key for an output.
 
 - `TransactionOutput`:
+
   ```motoko
   {
     amount: Nat64;            // Amount in sompi
     scriptPublicKey: ScriptPublicKey; // Output script
   }
   ```
-  - Represents an output in a Kaspa transaction.
 
-- `KaspaTransaction`:
+  - Represents an output in a Hoosat transaction.
+
+- `HoosatTransaction`:
+
   ```motoko
   {
     version: Nat16;          // Transaction version (e.g., 0)
@@ -523,7 +542,8 @@ Defines data structures for Kaspa transactions and UTXOs, used across the other 
     payload: Text;           // Hex-encoded payload
   }
   ```
-  - Represents a complete Kaspa transaction.
+
+  - Represents a complete Hoosat transaction.
 
 - `UTXO`:
   ```motoko
@@ -533,14 +553,15 @@ Defines data structures for Kaspa transactions and UTXOs, used across the other 
     amount: Nat64;          // Amount in sompi
     scriptVersion: Nat16;   // Script version (e.g., 0)
     scriptPublicKey: Text;  // Hex-encoded script public key
-    address: Text;          // Kaspa address (e.g., "kaspa:qypq...")
+    address: Text;          // Hoosat address (e.g., "Hoosat:qypq...")
   }
   ```
   - Represents an unspent transaction output.
 
 #### Example
+
 ```motoko
-let tx : Types.KaspaTransaction = {
+let tx : Types.HoosatTransaction = {
   version = 0;
   inputs = [{
     previousOutpoint = { transactionId = "a1b2c3d4e5f6..."; index = 0 };
@@ -560,12 +581,15 @@ let tx : Types.KaspaTransaction = {
 ```
 
 ## Contributing
-Contributions are welcome! Please open an issue or pull request on the [GitHub repository](https://github.com/codecustard/kaspa-mo).
+
+Contributions are welcome! Please open an issue or pull request on the [GitHub repository](https://github.com/codecustard/Hoosat-mo).
 
 ## License
+
 [MIT License](LICENSE)
 
 ## Additional Resources
+
 - [Quick Start](https://internetcomputer.org/docs/current/developer-docs/setup/deploy-locally)
 - [SDK Developer Tools](https://internetcomputer.org/docs/current/developer-docs/setup/install)
 - [Motoko Programming Language Guide](https://internetcomputer.org/docs/current/motoko/main/motoko)

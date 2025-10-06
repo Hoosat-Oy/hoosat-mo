@@ -2,19 +2,21 @@ import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Char "mo:base/Char";
+import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
+import Debug "mo:base/Debug";
 
-import Blake2b "mo:blake2b";
+import Blake3 "mo:blake3";
 import Sha256 "mo:sha2/Sha256";
 
 import Types "types";
 
-module Sighash {
+module SighashHoosat {
 
     // SigHashType definitions
     public type SigHashType = Nat8;
@@ -133,21 +135,49 @@ module Sighash {
     public func transaction_signing_ecdsa_domain_hash(): [Nat8] {
         let domain = "TransactionSigningHashECDSA";
         let domain_bytes = Text.encodeUtf8(domain);
-        Blob.toArray(Sha256.fromBlob(#sha256, domain_bytes))
+        let domain_hash = Blob.toArray(Sha256.fromBlob(#sha256, domain_bytes));
+        Debug.print("🔍 ECDSA Domain: " # domain);
+        Debug.print("🔍 ECDSA Domain Hash (hex): " # hex_from_array(domain_hash));
+        domain_hash
     };
 
-    public func blake2b_256(data: [Nat8], key: ?Text): [Nat8] {
-        let key_blob = switch (key) {
-            case (?k) { Text.encodeUtf8(k) };
-            case null { Blob.fromArray([]) };
+    // Proper Blake3 keyed hash implementation using the blake3-motoko library
+    private func blake3_keyed_hash_impl(key: [Nat8], data: [Nat8]): [Nat8] {
+        // Use the proper Blake3 keyed hash implementation
+        let hasher = Blake3.hasherInitKeyed(key);
+        let updated_hasher = Blake3.hasherUpdate(hasher, data);
+        Blake3.hasherFinalize(updated_hasher, 32)
+    };
+
+    // Blake3 hash function - matches HTND implementation
+    public func blake3_256(data: [Nat8], key: ?Text): [Nat8] {
+        // Create 32-byte array like HTND fixedSizeKey
+        let fixed_key = switch (key) {
+            case (?k) {
+                // Copy domain string into the fixed 32-byte array (like HTND copy function)
+                let key_bytes = Blob.toArray(Text.encodeUtf8(k));
+                let copy_len = Nat.min(key_bytes.size(), 32);
+                Array.tabulate<Nat8>(32, func(i) {
+                    if (i < copy_len) key_bytes[i] else 0
+                });
+            };
+            case null {
+                // Already zero-filled
+                Array.tabulate<Nat8>(32, func(_) = 0);
+            };
         };
-        let hash = Blake2b.hash(Blob.fromArray(data), ?{ digest_length = 32; key = ?key_blob; salt = null; personal = null });
-        Blob.toArray(hash)
+
+        // Debug: print the key for verification
+        Debug.print("🔍 Blake3 key (hex): " # hex_from_array(fixed_key));
+        Debug.print("🔍 Blake3 key length: " # Nat.toText(fixed_key.size()));
+
+        // Use the proper Blake3 keyed hash implementation
+        blake3_keyed_hash_impl(fixed_key, data)
     };
 
     // Get PreviousOutputsHash
     private func get_previous_outputs_hash(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         hashType: SigHashType,
         reusedValues: SighashReusedValues
     ): [Nat8] {
@@ -164,7 +194,8 @@ module Sighash {
                     hashWriter.append(Buffer.fromArray(txid_bytes));
                     hashWriter.append(Buffer.fromArray(index_bytes));
                 };
-                let hash = blake2b_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
+                let hash = blake3_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
+                Debug.print("🔍 PreviousOutputsHash (Blake3): " # hex_from_array(hash));
                 reusedValues.previousOutputsHash := ?hash;
                 hash
             };
@@ -173,7 +204,7 @@ module Sighash {
 
     // Get SequencesHash
     private func get_sequences_hash(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         hashType: SigHashType,
         reusedValues: SighashReusedValues
     ): [Nat8] {
@@ -190,7 +221,7 @@ module Sighash {
                     let sequence_bytes = nat64_to_le_bytes(txIn.sequence);
                     hashWriter.append(Buffer.fromArray(sequence_bytes));
                 };
-                let hash = blake2b_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
+                let hash = blake3_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
                 reusedValues.sequencesHash := ?hash;
                 hash
             };
@@ -199,7 +230,7 @@ module Sighash {
 
     // Get SigOpCountsHash
     private func get_sigop_counts_hash(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         hashType: SigHashType,
         reusedValues: SighashReusedValues
     ): [Nat8] {
@@ -213,7 +244,7 @@ module Sighash {
                 for (txIn in tx.inputs.vals()) {
                     hashWriter.add(txIn.sigOpCount);
                 };
-                let hash = blake2b_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
+                let hash = blake3_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
                 reusedValues.sigOpCountsHash := ?hash;
                 hash
             };
@@ -222,7 +253,7 @@ module Sighash {
 
     // Get OutputsHash
     private func get_outputs_hash(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         inputIndex: Nat,
         hashType: SigHashType,
         reusedValues: SighashReusedValues
@@ -239,12 +270,13 @@ module Sighash {
             let amount_bytes = nat64_to_le_bytes(output.amount);
             let version_bytes = nat16_to_bytes(output.scriptPublicKey.version);
             let script_bytes = hex_to_bytes(output.scriptPublicKey.scriptPublicKey);
-            let script_len_bytes = nat64_to_le_bytes(Nat64.fromNat(script_bytes.size())); // Fixed to 8-byte LE
+            // Write the full script bytes with length as 8 bytes (like HTND WriteElement for []byte)
+            let script_len_bytes = nat64_to_le_bytes(Nat64.fromNat(script_bytes.size()));
             hashWriter.append(Buffer.fromArray(amount_bytes));
             hashWriter.append(Buffer.fromArray(version_bytes));
             hashWriter.append(Buffer.fromArray(script_len_bytes));
             hashWriter.append(Buffer.fromArray(script_bytes));
-            return blake2b_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
+            return blake3_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
         };
         switch (reusedValues.outputsHash) {
             case (?hash) { hash };
@@ -254,13 +286,21 @@ module Sighash {
                     let amount_bytes = nat64_to_le_bytes(output.amount);
                     let version_bytes = nat16_to_bytes(output.scriptPublicKey.version);
                     let script_bytes = hex_to_bytes(output.scriptPublicKey.scriptPublicKey);
-                    let script_len_bytes = nat64_to_le_bytes(Nat64.fromNat(script_bytes.size())); // Fixed to 8-byte LE
+                    // Write the full script bytes with length as 8 bytes (like HTND WriteElement for []byte)
+                    let script_len_bytes = nat64_to_le_bytes(Nat64.fromNat(script_bytes.size()));
                     hashWriter.append(Buffer.fromArray(amount_bytes));
                     hashWriter.append(Buffer.fromArray(version_bytes));
                     hashWriter.append(Buffer.fromArray(script_len_bytes));
                     hashWriter.append(Buffer.fromArray(script_bytes));
+                    Debug.print("🔍 Output amount: " # Nat64.toText(output.amount));
+                    Debug.print("🔍 Output script version: " # Nat16.toText(output.scriptPublicKey.version));
+                    Debug.print("🔍 Output script: " # output.scriptPublicKey.scriptPublicKey);
                 };
-                let hash = blake2b_256(Buffer.toArray(hashWriter), ?transaction_signing_schnorr_domain());
+                let outputs_preimage = Buffer.toArray(hashWriter);
+                Debug.print("🔍 Outputs preimage length: " # Nat.toText(outputs_preimage.size()));
+                Debug.print("🔍 Outputs preimage (hex): " # hex_from_array(outputs_preimage));
+                let hash = blake3_256(outputs_preimage, ?transaction_signing_schnorr_domain());
+                Debug.print("🔍 OutputsHash (Blake3): " # hex_from_array(hash));
                 reusedValues.outputsHash := ?hash;
                 hash
             };
@@ -269,18 +309,18 @@ module Sighash {
 
     // Get PayloadHash
     private func get_payload_hash(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         reusedValues: SighashReusedValues
     ): [Nat8] {
         let native_subnetwork = "0000000000000000000000000000000000000000";
-        if (tx.subnetworkId == native_subnetwork and tx.payload.size() == 0) {
+        if (tx.subnetworkId == native_subnetwork) {
             return zero_hash();
         };
         switch (reusedValues.payloadHash) {
             case (?hash) { hash };
             case null {
                 let payload_bytes = hex_to_bytes(tx.payload);
-                let hash = blake2b_256(payload_bytes, ?transaction_signing_schnorr_domain());
+                let hash = blake3_256(payload_bytes, ?transaction_signing_schnorr_domain());
                 reusedValues.payloadHash := ?hash;
                 hash
             };
@@ -289,7 +329,7 @@ module Sighash {
 
     // Calculate sighash for Schnorr
     public func calculate_sighash_schnorr(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         input_index: Nat,
         utxo: Types.UTXO,
         hashType: SigHashType,
@@ -320,17 +360,27 @@ module Sighash {
         // Outpoint
         let txid_bytes = hex_to_bytes(tx.inputs[input_index].previousOutpoint.transactionId);
         let index_bytes = nat32_to_bytes(tx.inputs[input_index].previousOutpoint.index);
+        Debug.print("🔍 Transaction ID bytes: " # hex_from_array(txid_bytes));
+        Debug.print("🔍 Transaction ID length: " # Nat.toText(txid_bytes.size()));
+        Debug.print("🔍 Index bytes: " # hex_from_array(index_bytes));
         hashWriter.append(Buffer.fromArray(txid_bytes));
         hashWriter.append(Buffer.fromArray(index_bytes));
 
         // Script details
         let script_version_bytes = nat16_to_bytes(utxo.scriptVersion);
         hashWriter.append(Buffer.fromArray(script_version_bytes));
+        Debug.print("🔍 Script version bytes: " # hex_from_array(script_version_bytes));
 
         let script_bytes = hex_to_bytes(utxo.scriptPublicKey);
-        let script_len_bytes = nat64_to_le_bytes(Nat64.fromNat(script_bytes.size())); // Fixed to 8-byte LE
-        hashWriter.append(Buffer.fromArray(script_len_bytes));
+        Debug.print("🔍 Script bytes from UTXO: " # hex_from_array(script_bytes));
+        Debug.print("🔍 Script bytes length: " # Nat.toText(script_bytes.size()));
+        
+        // Write the full script bytes with length as 8 bytes (like HTND WriteElement for []byte)
+        let script_length_8bytes = nat64_to_le_bytes(Nat64.fromNat(script_bytes.size()));
+        hashWriter.append(Buffer.fromArray(script_length_8bytes));
         hashWriter.append(Buffer.fromArray(script_bytes));
+        Debug.print("🔍 Full script bytes: " # hex_from_array(script_bytes));
+        Debug.print("🔍 Script length (8 bytes): " # hex_from_array(script_length_8bytes));
 
         // Amount
         let amount_bytes = nat64_to_le_bytes(utxo.amount);
@@ -369,12 +419,16 @@ module Sighash {
         hashWriter.append(Buffer.fromArray(sighash_type_bytes));
 
         let preimage_bytes = Buffer.toArray(hashWriter);
-        ?blake2b_256(preimage_bytes, ?transaction_signing_schnorr_domain())
+        Debug.print("🔍 Sighash preimage length: " # Nat.toText(preimage_bytes.size()));
+        Debug.print("🔍 Sighash preimage (hex): " # hex_from_array(preimage_bytes));
+        let schnorr_result = blake3_256(preimage_bytes, ?transaction_signing_schnorr_domain());
+        Debug.print("🔍 Schnorr sighash result (Blake3): " # hex_from_array(schnorr_result));
+        ?schnorr_result
     };
 
     // Calculate sighash for ECDSA
     public func calculate_sighash_ecdsa(
-        tx: Types.KaspaTransaction,
+        tx: Types.HoosatTransaction,
         input_index: Nat,
         utxo: Types.UTXO,
         hashType: SigHashType,
@@ -390,7 +444,11 @@ module Sighash {
                 hash_writer.append(Buffer.fromArray(domain_hash));
                 hash_writer.append(Buffer.fromArray(schnorr_hash));
                 let final_preimage = Buffer.toArray(hash_writer);
-                ?Blob.toArray(Sha256.fromBlob(#sha256, Blob.fromArray(final_preimage)))
+                Debug.print("🔍 ECDSA Final preimage length: " # Nat.toText(final_preimage.size()));
+                Debug.print("🔍 ECDSA Final preimage (hex): " # hex_from_array(final_preimage));
+                let ecdsa_result = Blob.toArray(Sha256.fromBlob(#sha256, Blob.fromArray(final_preimage)));
+                Debug.print("🔍 ECDSA sighash result (SHA256): " # hex_from_array(ecdsa_result));
+                ?ecdsa_result
             };
         }
     };

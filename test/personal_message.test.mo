@@ -14,7 +14,7 @@ persistent actor {
     Debug.print("Running personal message and address tests");
 
     await test("hash personal message", func() : async () {
-      let message = "Hello Kaspa!";
+      let message = "Hello Hoosat!";
       let message_blob : Blob = Text.encodeUtf8(message);
       let message_bytes : [Nat8] = Blob.toArray(message_blob);
       let out_hash = Array.init<Nat8>(32, 0);
@@ -23,10 +23,10 @@ persistent actor {
       assert ok;
 
       let expected_hash : [Nat8] = [
-        0x2E, 0x55, 0xDE, 0xDA, 0x4A, 0x52, 0x24, 0x20,
-        0x8D, 0xBD, 0x4D, 0x93, 0xCF, 0xE5, 0xAA, 0x22,
-        0xD9, 0x45, 0xEA, 0xA6, 0x31, 0x72, 0xE3, 0x29,
-        0xC4, 0x9A, 0xFE, 0xD6, 0x2F, 0x0E, 0x15, 0x10
+        172, 68, 72, 77, 113, 198, 104, 48,
+        127, 68, 7, 235, 240, 167, 17, 51,
+        30, 120, 19, 220, 22, 193, 189, 12,
+        99, 189, 65, 38, 52, 115, 65, 182
       ];
       assert Array.freeze(out_hash) == expected_hash;
     });
@@ -39,7 +39,7 @@ persistent actor {
         0x1B, 0xE5, 0xBF, 0xD3, 0x0A, 0x67, 0x7C, 0xD6
       ]);
 
-      let expected_address = "kaspa:qypdtlw845g6vhgtheug9lpahjgmtpsarqkueeul0sd7t07npfnhe4s7fd82n0v";
+      let expected_address = "Hoosat:qypdtlw845g6vhgtheug9lpahjgmtpsarqkueeul0sd7t07npfnhe4s73hcw7fv";
       let address = Address.address_from_pubkey(compressed_public_key, Address.ECDSA);
 
       assert address != "";

@@ -26,14 +26,14 @@ import Constants "constants";
 
 module {
 
-    public type Result<T> = Result.Result<T, Errors.KaspaError>;
+    public type Result<T> = Result.Result<T, Errors.HoosatError>;
 
     // Wallet configuration
     public type WalletConfig = {
         key_name: Text;
         api_host: Text;
         network: Text; // "mainnet" or "testnet"
-        prefix: Text; // Network prefix (e.g., "kaspa", "hoosat")
+        prefix: Text; // Network prefix (e.g., "Hoosat", "hoosat")
         max_fee: Nat64;
         default_fee_rate: Nat64; // sompi per byte
     };
@@ -286,7 +286,7 @@ module {
                                         }
                                     );
 
-                                    let unsigned_tx : Types.KaspaTransaction = {
+                                    let unsigned_tx : Types.HoosatTransaction = {
                                         version = 0;
                                         inputs = inputs;
                                         outputs = outputs;
@@ -424,7 +424,7 @@ module {
                                         }
                                     );
 
-                                    let unsigned_tx : Types.KaspaTransaction = {
+                                    let unsigned_tx : Types.HoosatTransaction = {
                                         version = 0;
                                         inputs = inputs;
                                         outputs = outputs;
@@ -508,7 +508,7 @@ module {
             let url = "https://" # config.api_host # "/addresses/" # address # "/utxos";
             let request_headers = [
                 { name = "Content-Type"; value = "application/json" },
-                { name = "User-Agent"; value = "icp-kaspa-wallet" }
+                { name = "User-Agent"; value = "icp-Hoosat-wallet" }
             ];
 
             try {
@@ -573,7 +573,7 @@ module {
             }
         };
 
-        private func parseUTXOEntry(utxo_json: Json.Json) : Result.Result<ExtendedUTXO, Errors.KaspaError> {
+        private func parseUTXOEntry(utxo_json: Json.Json) : Result.Result<ExtendedUTXO, Errors.HoosatError> {
             switch (utxo_json) {
                 case (#object_(fields)) {
                     // Extract required fields from UTXO JSON according to API docs
@@ -751,10 +751,10 @@ module {
         };
 
         private func signTransaction(
-            tx: Types.KaspaTransaction,
+            tx: Types.HoosatTransaction,
             utxos: [Types.UTXO],
             derivation_path: ?Text
-        ) : async Result<Types.KaspaTransaction> {
+        ) : async Result<Types.HoosatTransaction> {
             let path = switch (derivation_path) {
                 case (null) { "" };
                 case (?p) { p };
@@ -794,7 +794,7 @@ module {
                                         key_id = { name = config.key_name; curve = #secp256k1 };
                                     });
 
-                                    // Create signature script with proper push format for Kaspa
+                                    // Create signature script with proper push format for Hoosat
                                     let signature_bytes = Blob.toArray(signature_result.signature);
                                     let sighash_type: Nat8 = 0x01; // SigHashAll
 
@@ -823,7 +823,7 @@ module {
                     };
 
                     // Return signed transaction
-                    let signed_tx : Types.KaspaTransaction = {
+                    let signed_tx : Types.HoosatTransaction = {
                         version = tx.version;
                         inputs = Buffer.toArray(signed_inputs);
                         outputs = tx.outputs;
@@ -844,12 +844,12 @@ module {
             Nat64.fromNat(estimated_size) * config.default_fee_rate
         };
 
-        // Broadcast a signed transaction to the Kaspa network
+        // Broadcast a signed transaction to the Hoosat network
         private func broadcastTransaction(serialized_tx: Text) : async Result<Text> {
             let url = "https://" # config.api_host # "/transactions";
             let request_headers = [
                 { name = "Content-Type"; value = "application/json" },
-                { name = "User-Agent"; value = "kaspa-production-wallet" }
+                { name = "User-Agent"; value = "Hoosat-production-wallet" }
             ];
 
             // The serialized transaction is already in JSON format
@@ -937,7 +937,7 @@ module {
             let url = "https://" # config.api_host # "/transactions/" # transaction_id;
             let request_headers = [
                 { name = "Content-Type"; value = "application/json" },
-                { name = "User-Agent"; value = "kaspa-production-wallet" }
+                { name = "User-Agent"; value = "Hoosat-production-wallet" }
             ];
 
             try {
@@ -1032,15 +1032,15 @@ module {
     // Factory function for creating production wallet
     public func createMainnetWallet(key_name: Text, prefix: ?Text) : Wallet {
         let network_prefix = switch (prefix) {
-            case (null) { "kaspa" };
+            case (null) { "Hoosat" };
             case (?p) { p };
         };
         let config: WalletConfig = {
             key_name = key_name;
-            api_host = "api.kaspa.org";
+            api_host = "api.network.hoosat.fi";
             network = "mainnet";
             prefix = network_prefix;
-            max_fee = 1_000_000; // 0.01 KAS max fee
+            max_fee = 1_000_000; // 0.01 HTN max fee
             default_fee_rate = 1000; // 1000 sompi per byte
         };
         Wallet(config)
@@ -1048,12 +1048,12 @@ module {
 
     public func createTestnetWallet(key_name: Text, prefix: ?Text) : Wallet {
         let network_prefix = switch (prefix) {
-            case (null) { "kaspa" };
+            case (null) { "Hoosat" };
             case (?p) { p };
         };
         let config: WalletConfig = {
             key_name = key_name;
-            api_host = "api-testnet.kaspa.org";
+            api_host = "api-testnet.Hoosat.org";
             network = "testnet";
             prefix = network_prefix;
             max_fee = 10_000_000; // Higher for testnet

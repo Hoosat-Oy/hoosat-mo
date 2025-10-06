@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Kaspa Motoko package will be documented in this file.
+All notable changes to the Hoosat Motoko package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2025-09-17
 
 ### Added
+
 - **Transaction Broadcasting System**: End-to-end transaction lifecycle support
   - `sendTransaction()` function for complete build → sign → broadcast flow
   - `buildTransaction()` function for building transactions without broadcasting
@@ -36,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better error reporting and validation
   - Enhanced hex encoding/decoding utilities
   - Script generation improvements
-- **HTTP Integration**: Direct Kaspa API communication
-  - UTXO fetching from `api.kaspa.org` and `api-testnet.kaspa.org`
+- **HTTP Integration**: Direct Hoosat API communication
+  - UTXO fetching from `api.Hoosat.org` and `api-testnet.Hoosat.org`
   - Transaction broadcasting with JSON formatting
   - Transaction status monitoring
   - Error handling for network failures
@@ -47,13 +48,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Transaction testing capability
 
 ### Changed
+
 - **Modern Motoko Syntax**: Updated to use `(with cycles = amount)` syntax instead of deprecated `Cycles.add()`
-- **UTXO Parsing**: Enhanced to handle Kaspa API response format with nested `outpoint` and `utxoEntry` structures
+- **UTXO Parsing**: Enhanced to handle Hoosat API response format with nested `outpoint` and `utxoEntry` structures
 - **Signature Script Formatting**: Bitcoin-style script encoding with length prefixes and sighash types
-- **JSON Structure**: Corrected transaction broadcast format to match Kaspa node expectations
+- **JSON Structure**: Corrected transaction broadcast format to match Hoosat node expectations
 - **Cycle Management**: Optimized cycle usage for HTTP outcalls and ECDSA operations
 
 ### Fixed
+
 - **Transaction Broadcasting**: Resolved JSON formatting issues for successful network submission
 - **Signature Validation**: Fixed "signature script is not push only" errors with proper script encoding
 - **UTXO Amount Parsing**: Corrected parsing of amount arrays in API responses
@@ -61,17 +64,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTTP Request Format**: Fixed missing/incorrect fields in IC HTTP outcall requests
 
 ### Technical Details
-- **Tested on Kaspa Mainnet**: Successfully broadcast real transactions
+
+- **Tested on Hoosat Mainnet**: Successfully broadcast real transactions
 - **IC Integration**: Uses threshold ECDSA with `dfx_test_key` for key management
-- **API Compatibility**: Works with Kaspa node REST API v1
+- **API Compatibility**: Works with Hoosat node REST API v1
 - **Cycle Requirements**: ~30B cycles for ECDSA operations, ~230B cycles for HTTP outcalls
 
 ### Breaking Changes
+
 - Wallet creation now requires explicit configuration through factory functions
 - Error types have been restructured - update error handling code accordingly
-- Some function signatures have changed to support the new `Result<T, KaspaError>` return type
+- Some function signatures have changed to support the new `Result<T, HoosatError>` return type
 
 ### Migration Guide
+
 - Replace direct wallet instantiation with factory functions:
   ```motoko
   // Old: let wallet = Wallet({...config})
@@ -87,10 +93,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 ### Dependencies
+
 - Maintains compatibility with existing dependencies: `base`, `blake2b`, `base64`, `sha2`, `json`
 - No new external dependencies added
 
 ---
 
 ## [Previous Versions]
+
 For previous version history, see git commit logs prior to this changelog implementation.

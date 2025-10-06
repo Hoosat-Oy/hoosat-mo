@@ -22,7 +22,7 @@ persistent actor {
         amount = 600_000;
         scriptPublicKey = "76a914abcdefabcdefabcdefabcdefabcdefabcdef88ac";
         scriptVersion = 0;
-        address = "kaspa:exampleaddress";
+        address = "Hoosat:exampleaddress";
       };
 
       let recipient_script = "76a9140123456789abcdef0123456789abcdef88ac";
@@ -67,7 +67,7 @@ persistent actor {
         amount = 1_000_000;
         scriptPublicKey = "76a914fedcbafedcbafedcbafedcbafedcbafedcba88ac";
         scriptVersion = 0;
-        address = "kaspa:exampleaddress2";
+        address = "Hoosat:exampleaddress2";
       };
 
       let recipient_script = "76a9149876543210fedcba9876543210fedcba88ac";
@@ -115,7 +115,7 @@ persistent actor {
         amount = 500_000; // Less than output + fee
         scriptPublicKey = "76a914abcdefabcdefabcdefabcdefabcdefabcdef88ac";
         scriptVersion = 0;
-        address = "kaspa:exampleaddress";
+        address = "Hoosat:exampleaddress";
       };
 
       let recipient_script = "76a9140123456789abcdef0123456789abcdef88ac";
@@ -152,7 +152,7 @@ persistent actor {
           amount = 100_000;
           scriptPublicKey = "76a9141234567890abcdef1234567890abcdef88ac";
           scriptVersion = 0;
-          address = "kaspa:exampleaddress3";
+          address = "Hoosat:exampleaddress3";
         };
 
         let recipient_script = "76a914fedcba9876543210fedcba987654321088ac";
@@ -197,7 +197,7 @@ persistent actor {
           amount = 100_000;
           scriptPublicKey = "76a914abcdefabcdefabcdefabcdefabcdefabcdef88ac";
           scriptVersion = 0;
-          address = "kaspa:exampleaddress4";
+          address = "Hoosat:exampleaddress4";
         };
 
         let recipient_script = "76a9140123456789abcdef0123456789abcdef88ac";
@@ -254,7 +254,7 @@ persistent actor {
       // Subtest 1: Single input, single output with signature script
       do {
         Debug.print("   Subtest 1: Single input, single output with signature script...");
-        let tx : Types.KaspaTransaction = {
+        let tx : Types.HoosatTransaction = {
           version = 0;
           inputs = [{
             previousOutpoint = {
@@ -287,7 +287,7 @@ persistent actor {
       // Subtest 2: Multiple inputs and outputs
       do {
         Debug.print("   Subtest 2: Multiple inputs and outputs...");
-        let tx : Types.KaspaTransaction = {
+        let tx : Types.HoosatTransaction = {
           version = 1;
           inputs = [
             {
@@ -340,7 +340,7 @@ persistent actor {
       // Subtest 3: Empty transaction
       do {
         Debug.print("   Subtest 3: Empty transaction...");
-        let tx : Types.KaspaTransaction = {
+        let tx : Types.HoosatTransaction = {
           version = 0;
           inputs = [];
           outputs = [];

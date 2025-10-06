@@ -21,7 +21,7 @@ module Types {
     scriptPublicKey: ScriptPublicKey;
   };
 
-  public type KaspaTransaction = {
+  public type HoosatTransaction = {
     version: Nat16;
     inputs: [TransactionInput];
     outputs: [TransactionOutput];

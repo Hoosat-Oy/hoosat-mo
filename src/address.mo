@@ -15,7 +15,7 @@ import Constants "constants";
 
 module {
 
-    public type Result<T> = Result.Result<T, Errors.KaspaError>;
+    public type Result<T> = Result.Result<T, Errors.HoosatError>;
 
     // Address type constants (re-exported from Constants)
     public let SCHNORR : Nat = Constants.SCHNORR;
@@ -193,7 +193,7 @@ module {
 
                 // Generate address
                 let network_prefix = switch (prefix) {
-                    case (null) { "kaspa" };
+                    case (null) { "Hoosat" };
                     case (?p) { p };
                 };
                 let prefix_bytes = Text.encodeUtf8(network_prefix) |> Blob.toArray(_);
@@ -228,7 +228,7 @@ module {
         };
 
         let network_prefix = switch (prefix) {
-            case (null) { "kaspa" };
+            case (null) { "Hoosat" };
             case (?p) { p };
         };
         let expected_prefix = network_prefix # ":";

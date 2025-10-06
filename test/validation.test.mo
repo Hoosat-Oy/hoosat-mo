@@ -28,7 +28,7 @@ persistent actor {
         }
     };
 
-    private func assertOk<T>(result: Result.Result<T, Errors.KaspaError>, message: Text) : Bool {
+    private func assertOk<T>(result: Result.Result<T, Errors.HoosatError>, message: Text) : Bool {
         switch (result) {
             case (#ok(_)) {
                 Debug.print("✅ PASS: " # message);
@@ -41,7 +41,7 @@ persistent actor {
         }
     };
 
-    private func assertErr<T>(result: Result.Result<T, Errors.KaspaError>, message: Text) : Bool {
+    private func assertErr<T>(result: Result.Result<T, Errors.HoosatError>, message: Text) : Bool {
         switch (result) {
             case (#ok(_)) {
                 Debug.print("❌ FAIL: " # message # " (expected error but got ok)");
@@ -63,8 +63,8 @@ persistent actor {
         // Test valid address (using a known valid address from the working tests)
         total += 1;
         if (assertOk(
-            Validation.validateAddress("kaspa:qqs7krzzwqfgk9kf830smtzg64s9rf3r0khfj76cjynf2pfgrr35saatu88xq"),
-            "Valid Kaspa address should pass"
+            Validation.validateAddress("Hoosat:qqs7krzzwqfgk9kf830smtzg64s9rf3r0khfj76cjynf2pfgrr35saatu88xq"),
+            "Valid Hoosat address should pass"
         )) {
             passed += 1;
         };

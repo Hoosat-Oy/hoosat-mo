@@ -36,7 +36,7 @@
 
 //     // Test address validation logic
 //     test("Address validation works correctly", func() {
-//         let valid_address = "kaspa:qypqv8kxjmnwqzpgllej3j3xp5nk3nrzltz3t2p5k5n6w4lzxhxfgqjkv5z7";
+//         let valid_address = "Hoosat:qypqv8kxjmnwqzpgllej3j3xp5nk3nrzltz3t2p5k5n6w4lzxhxfgqjkv5z7";
 //         let invalid_address = "invalid_address";
 //         let empty_address = "";
 
@@ -162,8 +162,8 @@
 //     // Test address encoding/decoding roundtrip
 //     test("Address encoding/decoding roundtrip", func() {
 //         let test_addresses = [
-//             "kaspa:qypqv8kxjmnwqzpgllej3j3xp5nk3nrzltz3t2p5k5n6w4lzxhxfgqjkv5z7",
-//             "kaspa:qqkqkzjvr7zwxxmjxjkmxxdwju9kjs6e9u82uh59z07vgaks6gg62v8707g73"
+//             "Hoosat:qypqv8kxjmnwqzpgllej3j3xp5nk3nrzltz3t2p5k5n6w4lzxhxfgqjkv5z7",
+//             "Hoosat:qqkqkzjvr7zwxxmjxjkmxxdwju9kjs6e9u82uh59z07vgaks6gg62v8707g73"
 //         ];
 
 //         for (address in test_addresses.vals()) {

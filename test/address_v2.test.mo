@@ -27,7 +27,7 @@ persistent actor {
     };
 
     private func assertResult<T>(
-        result: Result.Result<T, Errors.KaspaError>,
+        result: Result.Result<T, Errors.HoosatError>,
         expected_ok: Bool,
         message: Text
     ) : Bool {
@@ -297,12 +297,12 @@ persistent actor {
             case (#ok(addr_info)) {
                 Debug.print("Generated address: " # addr_info.address);
 
-                // Verify address starts with kaspa:
-                let has_prefix = Text.startsWith(addr_info.address, #text("kaspa:"));
+                // Verify address starts with Hoosat:
+                let has_prefix = Text.startsWith(addr_info.address, #text("Hoosat:"));
                 ignore assertEqual(
                     has_prefix,
                     true,
-                    "Generated address should have kaspa: prefix",
+                    "Generated address should have Hoosat: prefix",
                     func(a, b) { a == b },
                     func(b) { if (b) "true" else "false" }
                 );
@@ -404,11 +404,11 @@ persistent actor {
                     };
                 };
 
-                // Test that kaspa decoder fails on hoosat address
+                // Test that Hoosat decoder fails on hoosat address
                 ignore assertResult(
                     Address.decodeAddress(addr_info.address, null),
                     false,
-                    "Kaspa decoder should reject hoosat address"
+                    "Hoosat decoder should reject hoosat address"
                 );
             };
             case (#err(error)) {

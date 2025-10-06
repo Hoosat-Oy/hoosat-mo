@@ -1,37 +1,9 @@
 {
   "canisters": {
-    "internet_identity": {
-      "type": "pull",
-      "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
-    },
-
-    "kaspa_test_tecdsa": {
+    "hoosat_ecdsa": {
       "type": "motoko",
-      "main": "src/kaspa_test_tecdsa/main.mo",
+      "main": "examples/hoosat_ecdsa/main.mo",
       "init_cycles": 2000000000000
-    },
-
-    "hoosat_test_tecdsa": {
-      "type": "motoko",
-      "main": "examples/hoosat_test_tecdsa/main.mo",
-      "init_cycles": 2000000000000
-    },
-
-    "wallet_broadcast_example": {
-      "type": "motoko",
-      "main": "examples/wallet_broadcast_example.mo",
-      "init_cycles": 3000000000000
-    },
-
-    "ii_kaspa_wallet": {
-      "type": "motoko",
-      "main": "examples/ii_kaspa_wallet/backend.mo",
-      "init_cycles": 5000000000000
-    },
-
-    "ii_wallet_frontend": {
-      "type": "assets",
-      "source": ["examples/ii_kaspa_wallet/frontend/dist/"]
     }
   },
   "defaults": {

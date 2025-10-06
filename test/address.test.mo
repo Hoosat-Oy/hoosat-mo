@@ -113,7 +113,7 @@ persistent actor {
 
         // Test 7: address_from_pubkey (SCHNORR)
         let schnorr_pubkey_blob = Blob.fromArray(schnorr_pubkey);
-        let expected_schnorr_address = "kaspa:qqs7krzzwqfgk9kf830smtzg64s9rf3r0khfj76cjynf2pfgrr35saatu88xq";
+        let expected_schnorr_address = "Hoosat:qqs7krzzwqfgk9kf830smtzg64s9rf3r0khfj76cjynf2pfgrr35smvpqwugu";
         total += 1;
         if (assertEqual(Address.address_from_pubkey(schnorr_pubkey_blob, Address.SCHNORR), expected_schnorr_address, "address_from_pubkey: SCHNORR valid", textEq, textToText)) {
             passed += 1;
@@ -121,7 +121,7 @@ persistent actor {
 
         // Test 8: address_from_pubkey (P2SH)
         let p2sh_hash = Address.array_from_hex("f38031f61ca23d70844f63a477d07f0b2c2decab907c2e096e548b0e08721c79");
-        let expected_p2sh_address = "kaspa:precqv0krj3r6uyyfa36ga7s0u9jct0v4wg8ctsfde2gkrsgwgw8jgxfzfc98";
+        let expected_p2sh_address = "Hoosat:precqv0krj3r6uyyfa36ga7s0u9jct0v4wg8ctsfde2gkrsgwgw8jwhr7qrtm";
         total += 1;
         if (assertEqual(Address.address_from_pubkey(Blob.fromArray(p2sh_hash), Address.P2SH), expected_p2sh_address, "address_from_pubkey: P2SH valid", textEq, textToText)) {
             passed += 1;
@@ -129,7 +129,7 @@ persistent actor {
 
         // Test 9: address_from_pubkey (ECDSA)
         let ecdsa_pubkey_blob = Blob.fromArray(ecdsa_pubkey);
-        let expected_ecdsa_address = "kaspa:qypff6urmgk8452vjx55r63dhc38s6ewlavknmnefzgac42n3lt8cdchp86su6n";
+        let expected_ecdsa_address = "Hoosat:qypff6urmgk8452vjx55r63dhc38s6ewlavknmnefzgac42n3lt8cdchea953un";
         total += 1;
         if (assertEqual(Address.address_from_pubkey(ecdsa_pubkey_blob, Address.ECDSA), expected_ecdsa_address, "address_from_pubkey: ECDSA valid", textEq, textToText)) {
             passed += 1;
@@ -148,7 +148,7 @@ persistent actor {
         };
 
         // Test 11: decode_address (SCHNORR)
-        let schnorr_address = "kaspa:qqs7krzzwqfgk9kf830smtzg64s9rf3r0khfj76cjynf2pfgrr35saatu88xq";
+        let schnorr_address = "Hoosat:qqs7krzzwqfgk9kf830smtzg64s9rf3r0khfj76cjynf2pfgrr35smvpqwugu";
         let expected_schnorr_tuple = ?(Address.SCHNORR, schnorr_pubkey);
         total += 1;
         if (assertEqual(Address.decode_address(schnorr_address), expected_schnorr_tuple, "decode_address: SCHNORR valid", optTupleEq, optTupleToText)) {
@@ -156,14 +156,14 @@ persistent actor {
         };
 
         // Test 12: decode_address (invalid address)
-        let invalid_address = "kaspa:invalid";
+        let invalid_address = "Hoosat:invalid";
         total += 1;
         if (assertEqual(Address.decode_address(invalid_address), null, "decode_address: invalid address", optTupleEq, optTupleToText)) {
             passed += 1;
         };
 
         // Test 13: decode_address (ECDSA)
-        let ecdsa_address = "kaspa:qypff6urmgk8452vjx55r63dhc38s6ewlavknmnefzgac42n3lt8cdchp86su6n";
+        let ecdsa_address = "Hoosat:qypff6urmgk8452vjx55r63dhc38s6ewlavknmnefzgac42n3lt8cdchea953un";
         let expected_ecdsa_tuple = ?(Address.ECDSA, ecdsa_pubkey);
         total += 1;
         if (assertEqual(Address.decode_address(ecdsa_address), expected_ecdsa_tuple, "decode_address: ECDSA valid", optTupleEq, optTupleToText)) {

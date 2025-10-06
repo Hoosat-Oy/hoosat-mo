@@ -1,10 +1,11 @@
-# Kaspa Production Deployment Guide
+# Hoosat Production Deployment Guide
 
-This guide provides comprehensive instructions for deploying the Kaspa integration in production environments for wallets, bridges, DEXs, and other applications.
+This guide provides comprehensive instructions for deploying the Hoosat integration in production environments for wallets, bridges, DEXs, and other applications.
 
 ## 🚨 Security Considerations
 
 ### Key Management
+
 - **NEVER use `dfx_test_key` in production** - this is only for local development
 - Use production threshold ECDSA keys with proper permissions
 - Implement key rotation policies
@@ -12,6 +13,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 - Limit derivation path exposure
 
 ### Network Security
+
 - Always use HTTPS for API calls
 - Implement rate limiting for HTTP requests
 - Validate all external API responses
@@ -19,6 +21,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 - Monitor for suspicious activity
 
 ### Code Security
+
 - All inputs are validated using the `Validation` module
 - Cryptographic operations use vetted libraries
 - Error messages don't leak sensitive information
@@ -27,6 +30,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 ## 📋 Pre-Production Checklist
 
 ### Infrastructure
+
 - [ ] IC subnet with sufficient compute and storage
 - [ ] Production threshold ECDSA key configured
 - [ ] Monitoring and alerting setup
@@ -34,6 +38,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 - [ ] Load testing completed
 
 ### Security
+
 - [ ] Security audit completed
 - [ ] Penetration testing performed
 - [ ] Key management procedures documented
@@ -41,6 +46,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 - [ ] Access controls implemented
 
 ### Performance
+
 - [ ] Transaction throughput tested
 - [ ] Memory usage optimized
 - [ ] Cycle consumption measured
@@ -48,6 +54,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 - [ ] Caching strategies implemented
 
 ### Compliance
+
 - [ ] Regulatory requirements reviewed
 - [ ] Privacy policy updated
 - [ ] Terms of service updated
@@ -59,6 +66,7 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 ### Production Modules
 
 #### Core Libraries
+
 - `errors.mo` - Comprehensive error handling
 - `validation.mo` - Input validation and sanitization
 - `address.mo` - Enhanced address operations
@@ -69,11 +77,11 @@ This guide provides comprehensive instructions for deploying the Kaspa integrati
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Backend       │    │   IC Canister   │
-│   Application   │───▶│   API Gateway   │───▶│   Kaspa Wallet  │
+│   Application   │───▶│   API Gateway   │───▶│   Hoosat Wallet  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                                        │
                                                ┌─────────────────┐
-                                               │   Kaspa Network │
+                                               │   Hoosat Network │
                                                │   (via API)     │
                                                └─────────────────┘
 ```
@@ -97,10 +105,10 @@ Create production configuration:
 
 ```motoko
 let production_config = {
-    key_name = "production_kaspa_key";  // Your production key
-    api_host = "api.kaspa.org";
+    key_name = "production_hoosat_key";  // Your production key
+    api_host = "api.network.hoosat.fi";
     network = "mainnet";
-    max_fee = 1_000_000;  // 0.01 KAS
+    max_fee = 1_000_000;  // 0.01 HTN
     default_fee_rate = 1000;  // Adjust based on network conditions
 };
 ```
@@ -112,7 +120,7 @@ let production_config = {
 dfx deploy --network ic --with-cycles 10000000000000
 
 # Verify deployment
-dfx canister --network ic call your_canister_name get_kaspa_address '(null)'
+dfx canister --network ic call your_canister_name get_hoosat_address '(null)'
 ```
 
 ### 4. Testing
@@ -131,7 +139,7 @@ mops test
 ```motoko
 public type WalletConfig = {
     key_name: Text;           // Production ECDSA key name
-    api_host: Text;           // Kaspa API endpoint
+    api_host: Text;           // Hoosat API endpoint
     network: Text;            // "mainnet" or "testnet"
     max_fee: Nat64;          // Maximum allowed fee
     default_fee_rate: Nat64; // Default fee rate (sompi/byte)
@@ -144,7 +152,7 @@ public type WalletConfig = {
 // Adjust these constants based on your requirements
 public let DUST_THRESHOLD : Nat64 = 1_000;    // Minimum output
 public let MIN_FEE : Nat64 = 1_000;           // Minimum fee
-public let MAX_FEE : Nat64 = 100_000_000;     // Maximum fee (1 KAS)
+public let MAX_FEE : Nat64 = 100_000_000;     // Maximum fee (1 HTN)
 ```
 
 ## 📊 Monitoring and Metrics
@@ -152,12 +160,14 @@ public let MAX_FEE : Nat64 = 100_000_000;     // Maximum fee (1 KAS)
 ### Key Metrics to Monitor
 
 1. **Transaction Metrics**
+
    - Transaction success rate
    - Average transaction time
    - Fee distribution
    - UTXO utilization
 
 2. **System Metrics**
+
    - Cycle consumption
    - Memory usage
    - API response times
@@ -188,6 +198,7 @@ public func logTransaction(
 ## 🛡️ Security Best Practices
 
 ### Input Validation
+
 ```motoko
 // Always validate inputs
 let validation_result = Validation.validateAddress(address);
@@ -202,6 +213,7 @@ switch (validation_result) {
 ```
 
 ### Error Handling
+
 ```motoko
 // Use structured error handling
 switch (wallet.sendTransaction(from, to, amount, fee, path)) {
@@ -213,6 +225,7 @@ switch (wallet.sendTransaction(from, to, amount, fee, path)) {
 ```
 
 ### Rate Limiting
+
 ```motoko
 // Implement per-caller rate limiting
 private stable var rate_limits: [(Principal, Nat64)] = [];
@@ -226,6 +239,7 @@ private func checkRateLimit(caller: Principal) : Bool {
 ## 🚨 Emergency Procedures
 
 ### Circuit Breakers
+
 Implement circuit breakers for critical operations:
 
 ```motoko
@@ -236,7 +250,7 @@ public func enableEmergencyMode() : async () {
     emergency_mode := true;
 };
 
-private func checkEmergencyMode() : Result.Result<(), Errors.KaspaError> {
+private func checkEmergencyMode() : Result.Result<(), Errors.HoosatError> {
     if (emergency_mode) {
         return #err(Errors.internalError("System in emergency mode"));
     };
@@ -245,12 +259,15 @@ private func checkEmergencyMode() : Result.Result<(), Errors.KaspaError> {
 ```
 
 ### Incident Response
+
 1. **Immediate Response**
+
    - Enable emergency mode
    - Stop new transactions
    - Assess scope of issue
 
 2. **Investigation**
+
    - Review transaction logs
    - Check system metrics
    - Analyze error patterns
@@ -263,38 +280,43 @@ private func checkEmergencyMode() : Result.Result<(), Errors.KaspaError> {
 ## 📞 Support and Maintenance
 
 ### Regular Maintenance
-- Monitor Kaspa network upgrades
+
+- Monitor Hoosat network upgrades
 - Update API endpoints if needed
 - Review and update fee estimates
 - Perform security updates
 
 ### Troubleshooting
+
 - Check cycle balance regularly
 - Monitor API rate limits
 - Review error logs
 - Test key availability
 
 ### Getting Help
+
 - Review error messages using `Errors.errorToText()`
-- Check network status at https://kaspa.org
+- Check network status at https://Hoosat.org
 - Monitor transaction status via block explorers
 - Contact your security team for key-related issues
 
 ## 📈 Performance Optimization
 
 ### Transaction Batching
+
 Consider implementing transaction batching for high-volume applications:
 
 ```motoko
 public func batchSendTransactions(
     transactions: [TransactionRequest]
-) : async [Result.Result<TransactionResult, Errors.KaspaError>] {
+) : async [Result.Result<TransactionResult, Errors.HoosatError>] {
     // Implement batching logic
     []
 };
 ```
 
 ### UTXO Management
+
 Implement intelligent UTXO selection and consolidation strategies:
 
 ```motoko
@@ -305,6 +327,7 @@ private func optimizeUTXOSet(utxos: [Types.UTXO]) : [Types.UTXO] {
 ```
 
 ### Caching
+
 Cache frequently accessed data:
 
 ```motoko

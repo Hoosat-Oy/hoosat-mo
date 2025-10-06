@@ -11,7 +11,7 @@ import Constants "constants";
 
 module {
 
-    public type Result<T> = Result.Result<T, Errors.KaspaError>;
+    public type Result<T> = Result.Result<T, Errors.HoosatError>;
 
     // Basic address format validation (detailed validation in address.mo)
     public func validateAddress(address: Text) : Result<Text> {

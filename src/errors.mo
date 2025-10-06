@@ -2,8 +2,8 @@ import Debug "mo:base/Debug";
 
 module {
 
-    // Kaspa-specific error types
-    public type KaspaError = {
+    // Hoosat-specific error types
+    public type HoosatError = {
         #InvalidAddress : { message: Text };
         #InvalidAmount : { message: Text; min: ?Nat64; max: ?Nat64 };
         #InvalidPublicKey : { message: Text; expected_length: Nat };
@@ -18,8 +18,8 @@ module {
         #InternalError : { message: Text };
     };
 
-    // Convert KaspaError to human-readable text
-    public func errorToText(error: KaspaError) : Text {
+    // Convert HoosatError to human-readable text
+    public func errorToText(error: HoosatError) : Text {
         switch (error) {
             case (#InvalidAddress(e)) { "Invalid address: " # e.message };
             case (#InvalidAmount(e)) {
@@ -51,35 +51,35 @@ module {
     };
 
     // Helper functions for creating common errors
-    public func invalidAddress(message: Text) : KaspaError {
+    public func invalidAddress(message: Text) : HoosatError {
         #InvalidAddress({ message })
     };
 
-    public func invalidAmount(message: Text, min: ?Nat64, max: ?Nat64) : KaspaError {
+    public func invalidAmount(message: Text, min: ?Nat64, max: ?Nat64) : HoosatError {
         #InvalidAmount({ message; min; max })
     };
 
-    public func insufficientFunds(required: Nat64, available: Nat64) : KaspaError {
+    public func insufficientFunds(required: Nat64, available: Nat64) : HoosatError {
         #InsufficientFunds({ required; available })
     };
 
-    public func networkError(message: Text, status_code: ?Nat) : KaspaError {
+    public func networkError(message: Text, status_code: ?Nat) : HoosatError {
         #NetworkError({ message; status_code })
     };
 
-    public func cryptographicError(message: Text) : KaspaError {
+    public func cryptographicError(message: Text) : HoosatError {
         #CryptographicError({ message })
     };
 
-    public func validationError(message: Text) : KaspaError {
+    public func validationError(message: Text) : HoosatError {
         #ValidationError({ message })
     };
 
-    public func internalError(message: Text) : KaspaError {
+    public func internalError(message: Text) : HoosatError {
         #InternalError({ message })
     };
 
-    public func invalidPublicKey(message: Text, expected_length: Nat) : KaspaError {
+    public func invalidPublicKey(message: Text, expected_length: Nat) : HoosatError {
         #InvalidPublicKey({ message; expected_length })
     };
 }

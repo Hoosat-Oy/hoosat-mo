@@ -19,7 +19,8 @@ import IC "ic:aaaaa-aa";
 import Address "../../src/address";
 import Transaction "../../src/transaction";
 import Types "../../src/types";
-import SighashHoosat "sighash_hoosat";
+import SighashHoosat "../../src/sighash";
+import Wallet "../../src/wallet";
 
 // Updated modules with improved error handling
 import Result "mo:base/Result";
@@ -29,6 +30,8 @@ import Validation "../../src/validation";
 persistent actor {
     private let key_id = "dfx_test_key";
     private let DUST_THRESHOLD : Nat64 = 1_000; // Minimum output amount in sompi
+
+    transient let wallet = Wallet.createMainnetWallet("dfx_test_key", ?"hoosat");
 
     // Hoosat uses Blake3 instead of Blake2b for signature hashing
     // This implementation uses the Blake3 library via SighashHoosat module
@@ -419,7 +422,7 @@ persistent actor {
     // Test function to compare Motoko and Go signature hash calculations
     public func test_sighash_calculation() : async Text {
         // Create the same transaction as in the Go test
-        let tx: Types.KaspaTransaction = {
+        let tx: Types.HoosatTransaction = {
             version = 0;
             inputs = [
                 {
@@ -497,7 +500,7 @@ persistent actor {
         "Motoko ECDSA Sighash: " # ecdsa_result # "\nMotoko Schnorr Sighash: " # schnorr_result
     };
 
-    public func send_kas_schnorr(
+    public func send_hoosat_schnorr(
         recipient_address: Text,
         amount: Nat64
     ) : async ?Text {
@@ -585,7 +588,7 @@ persistent actor {
                 };
 
                 // --- Build transaction with normal fee to test multiple outputs with SigHashAll ---
-                let tx: Types.KaspaTransaction = Transaction.build_transaction(
+                let tx: Types.HoosatTransaction = Transaction.build_transaction(
                     utxo,
                     recipient_script,
                     amount,
@@ -668,7 +671,7 @@ persistent actor {
                     }
                 });
 
-                let signed_tx: Types.KaspaTransaction = {
+                let signed_tx: Types.HoosatTransaction = {
                     tx with inputs = updated_inputs
                 };
 
@@ -683,26 +686,28 @@ persistent actor {
 
                 // --- Serialize signed transaction ---
                 let serialized_tx = Transaction.serialize_transaction(signed_tx);
-                Debug.print("");
-                Debug.print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀");
-                Debug.print("🚀                HOOSAT SCHNORR TRANSACTION                🚀");
-                Debug.print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀");
-                Debug.print("");
-                Debug.print("📋 COPY THIS JSON FOR RPC:");
-                Debug.print("");
-                Debug.print(serialized_tx);
-                Debug.print("");
-                Debug.print("🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀");
-                Debug.print("");
-                return ?serialized_tx;
+                Debug.print("Serialized signed transaction: " # serialized_tx);
+                // Broadcast using wallet instance
+                let broadcast_result = await wallet.broadcastSerializedTransaction(serialized_tx);
+                switch (broadcast_result) {
+                    case (#err(error)) {
+                        Debug.print("🚨 Failed to submit transaction to Hoosat mainnet: " # Errors.errorToText(error));
+                        return null;
+                    };
+                    case (#ok(tx_id)) {
+                        Debug.print("✅ Transaction submitted successfully: " # tx_id);
+                        return ?tx_id;
+                    };
+                };
             };
         }
     };
 
-    public func send_kas(
+    public func send_hoosat(
         recipient_address: Text,
         amount: Nat64
     ) : async ?Text {
+        // Create a Wallet instance for mainnet
         // --- Check for dust output ---
         if (amount < DUST_THRESHOLD) {
             Debug.print("🚨 Output amount " # Nat64.toText(amount) # " sompi is below dust threshold of " # Nat64.toText(DUST_THRESHOLD) # " sompi");
@@ -798,7 +803,7 @@ persistent actor {
                         }
                     };
                 };
-                let tx: Types.KaspaTransaction = Transaction.build_transaction(
+                let tx: Types.HoosatTransaction = Transaction.build_transaction(
                     utxo,
                     recipient_script,
                     amount,
@@ -868,7 +873,7 @@ persistent actor {
                     }
                 });
 
-                let signed_tx: Types.KaspaTransaction = {
+                let signed_tx: Types.HoosatTransaction = {
                     tx with inputs = updated_inputs
                 };
 
@@ -879,20 +884,18 @@ persistent actor {
                 // --- Serialize signed transaction ---
                 let serialized_tx = Transaction.serialize_transaction(signed_tx);
                 Debug.print("Serialized signed transaction: " # serialized_tx);
-                return ?serialized_tx;
-
-                // --- Submit transaction to Kaspa mainnet ---
-                // let submission_result = await Transaction.submit_transaction(serialized_tx);
-                // switch (submission_result) {
-                //     case (null) {
-                //         Debug.print("🚨 Failed to submit transaction to Kaspa mainnet");
-                //         return null;
-                //     };
-                //     case (?tx_id) {
-                //         Debug.print("✅ Transaction submitted successfully: " # tx_id);
-                //         return ?tx_id;
-                //     };
-                // };
+                // Broadcast using wallet instance
+                let broadcast_result = await wallet.broadcastSerializedTransaction(serialized_tx);
+                switch (broadcast_result) {
+                    case (#err(error)) {
+                        Debug.print("🚨 Failed to submit transaction to Hoosat mainnet: " # Errors.errorToText(error));
+                        return null;
+                    };
+                    case (#ok(tx_id)) {
+                        Debug.print("✅ Transaction submitted successfully: " # tx_id);
+                        return ?tx_id;
+                    };
+                }
             };
         }
     };

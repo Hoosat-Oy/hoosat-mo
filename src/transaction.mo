@@ -24,7 +24,7 @@ module {
     ];
 
 
-    // Helper to encode (r,s) signature to DER format for Kaspa with low-S normalization
+    // Helper to encode (r,s) signature to DER format for Hoosat with low-S normalization
     private func encode_der_signature(sig : [Nat8]) : [Nat8] {
         if (sig.size() != 64) {
             Debug.print("Invalid signature length: " # Nat.toText(sig.size()) # ", expected 64 bytes");
@@ -133,7 +133,7 @@ module {
         output_amount: Nat64,  // Amount to send (in sompi)
         fee: Nat64,            // Transaction fee (in sompi)
         change_script: Text    // scriptPublicKey for change (sender's address)
-    ) : Types.KaspaTransaction {
+    ) : Types.HoosatTransaction {
         let total_input = utxo.amount;
         if (total_input < output_amount + fee) {
             Debug.print("🚨 Insufficient UTXO amount for transaction");
@@ -199,8 +199,8 @@ module {
         }
     };
 
-    // Serialize transaction to JSON for Kaspa REST API
-    public func serialize_transaction(tx: Types.KaspaTransaction) : Text {
+    // Serialize transaction to JSON for Hoosat REST API
+    public func serialize_transaction(tx: Types.HoosatTransaction) : Text {
         let inputs_json = Array.foldLeft<Types.TransactionInput, Text>(
             tx.inputs,
             "[",
