@@ -1,7 +1,7 @@
 # Hoosat Motoko Package and Canister
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/Hoosat)](https://mops.one/Hoosat)
+[![mops](https://oknww-riaaa-aaaam-qaf6a-cai.raw.ic0.app/badge/mops/hoosat-mo)](https://mops.one/hoosat-mo)
 
 Welcome to the `Hoosat-mo` project, which provides a Motoko package (`Hoosat-mo`) and a canister implementation for interacting with the Hoosat blockchain on the Internet Computer (IC). The `Hoosat-mo` package includes modules for generating and decoding Hoosat addresses, calculating signature hashes, building and serializing transactions, and defining common blockchain data structures. The `hoosat_ecdsa.mo` canister demonstrates how to use the package to fetch UTXOs, generate addresses, and sign ECDSA-based transactions.
 
