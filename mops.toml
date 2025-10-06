@@ -2,7 +2,7 @@ dev-dependencies = { }
 
 [package]
 name = "hoosat-mo"
-version = "0.2.2"
+version = "0.2.3"
 description = "Motoko package for Hoosat integration."
 repository = "https://github.com/Hoosat-Oy/Hoosat-mo"
 keywords = [ "hoosat", "threshold", "chain-fusion" ]

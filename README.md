@@ -48,7 +48,7 @@ To use the `Hoosat-mo` package in your Motoko project:
 2. **Add the Hoosat package** to your project:
 
    ```bash
-   mops add Hoosat
+   mops add hoosat-mo
    ```
 
 3. **For DFX projects**:
@@ -87,7 +87,7 @@ The `Hoosat-mo` package and `Hoosat` canister depend on:
 This package can be added via [mops.one](https://mops.one/Hoosat):
 
 ```bash
-mops add Hoosat
+mops add hoosat-mo
 ```
 
 The canister also uses the IC management canister (`ic:aaaaa-aa`) for ECDSA operations, requiring sufficient cycles and permissions.
@@ -124,10 +124,10 @@ This repository includes comprehensive examples demonstrating different use case
 Import the `Hoosat-mo` modules in your Motoko code:
 
 ```motoko
-import Address "mo:Hoosat-mo/address";
-import Wallet "mo:Hoosat-mo/wallet";
-import Errors "mo:Hoosat-mo/errors";
-import Validation "mo:Hoosat-mo/validation";
+import Address "mo:hoosat-mo/address";
+import Wallet "mo:hoosat-mo/wallet";
+import Errors "mo:hoosat-mo/errors";
+import Validation "mo:hoosat-mo/validation";
 ```
 
 ### Example: Generating a Hoosat Address
@@ -135,7 +135,7 @@ import Validation "mo:Hoosat-mo/validation";
 Generate a Hoosat address from a public key (Schnorr or ECDSA):
 
 ```motoko
-import Address "mo:Hoosat-mo/address";
+import Address "mo:hoosat-mo/address";
 import Result "mo:base/Result";
 import Blob "mo:base/Blob";
 
@@ -164,8 +164,8 @@ Example call:
 Calculate a signature hash for a Hoosat transaction input:
 
 ```motoko
-import Sighash "mo:Hoosat-mo/src/sighash";
-import Types "mo:Hoosat-mo/src/types";
+import Sighash "mo:hoosat-mo/src/sighash";
+import Types "mo:hoosat-mo/src/types";
 
 actor {
   public func calculateSighash(tx : Types.HoosatTransaction, inputIndex : Nat, utxo : Types.UTXO) : async ?Text {
@@ -189,8 +189,8 @@ actor {
 Build a Hoosat transaction with one input and one or two outputs:
 
 ```motoko
-import Transaction "mo:Hoosat-mo/src/transaction";
-import Types "mo:Hoosat-mo/src/types";
+import Transaction "mo:hoosat-mo/src/transaction";
+import Types "mo:hoosat-mo/src/types";
 
 actor {
   public func createTransaction(

@@ -98,7 +98,7 @@ Supports standard Hoosat sighash types:
 
 #### Production Imports (Recommended for new development)
 
-For library usage (after `mops add Hoosat`):
+For library usage (after `mops add hoosat-mo`):
 
 ```motoko
 import Result "mo:base/Result";
